@@ -137,16 +137,17 @@ doc.Get("/path").Summary("Get a thing") // and on
 doc.Post("/path").Summary("Post a thing") // and on
 ```
 
-Within each primary there are secondary components. To avoid breaking up your primary paragraphs, these do not return the different types for configuration but make use of callbacks.
+Within each primary there are secondary components. To avoid breaking up your primary paragraphs, these do not return the different types for configuration but make use of callbacks or inner constructors.
 
 ```go
 doc.Get("/path").Summary("Get a thing").
     OperationID("getThing").
-    Parameters(func(p *arrest.Parameters) {
-        p.P(0, func(p *arrest.Parameter) {
-            p.Name("id").In("path").Required()
-        })
-    }).
+	Parameters(
+		arrest.ParametersFromReflect(reflect.TypeOf(GetThing)).
+            p.P(0, func(p *arrest.Parameter) {
+                p.Name("id").In("query").Required()
+            })
+    ).
     Response("200", func(r *arrest.Response) {
         r.Description("The thing").
             Content("application/json", arrest.ModelFrom[Thing]())
