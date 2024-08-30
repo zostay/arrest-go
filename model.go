@@ -9,8 +9,11 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+// ErrUnsupportedModelType is returned when the model type is not supported.
 var ErrUnsupportedModelType = errors.New("unsupported model type")
 
+// Model provides DSL methods for creating OpenAPI schema objects based on Go
+// types.
 type Model struct {
 	SchemaProxy *base.SchemaProxy
 
@@ -116,11 +119,13 @@ func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 	}
 }
 
+// ModelFromReflect creates a new Model from a reflect.Type.
 func ModelFromReflect(t reflect.Type) *Model {
 	sp, err := makeSchemaProxy(t)
 	return withErr(&Model{SchemaProxy: sp}, err)
 }
 
+// ModelFrom creates a new Model from a type.
 func ModelFrom[T any]() *Model {
 	var t T
 	return ModelFromReflect(reflect.TypeOf(t))

@@ -7,12 +7,14 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+// Operation provides DSL methods for creating OpenAPI operations.
 type Operation struct {
 	Operation *v3.Operation
 
 	ErrHelper
 }
 
+// RequestBody sets the request body for the operation.
 func (o *Operation) RequestBody(mt string, model *Model) *Operation {
 	if model.SchemaProxy == nil {
 		return withErr(o, fmt.Errorf("model must be initialized"))
@@ -34,51 +36,25 @@ func (o *Operation) RequestBody(mt string, model *Model) *Operation {
 	return o
 }
 
-func (o *Operation) ResponseBody(code, mt string, model *Model) *Operation {
-	if model.SchemaProxy == nil {
-		return withErr(o, fmt.Errorf("model must be initialized"))
-	}
-
-	o.AddHandler(model)
-
-	if o.Operation.Responses == nil {
-		o.Operation.Responses = &v3.Responses{}
-	}
-
-	if o.Operation.Responses.Codes == nil {
-		o.Operation.Responses.Codes = orderedmap.New[string, *v3.Response]()
-	}
-
-	codes := o.Operation.Responses.Codes
-	if _, hasCode := codes.Get(code); !hasCode {
-		codes.Set(code, &v3.Response{})
-	}
-
-	res := codes.GetOrZero(code)
-	if res.Content == nil {
-		res.Content = orderedmap.New[string, *v3.MediaType]()
-	}
-
-	res.Content.Set(mt, &v3.MediaType{Schema: model.SchemaProxy})
-
-	return o
-}
-
+// Summary sets the summary for the operation.
 func (o *Operation) Summary(summary string) *Operation {
 	o.Operation.Summary = summary
 	return o
 }
 
+// OperationID sets the operation ID for the operation.
 func (o *Operation) OperationID(id string) *Operation {
 	o.Operation.OperationId = id
 	return o
 }
 
+// Tags adds tags to the operation.
 func (o *Operation) Tags(tags ...string) *Operation {
 	o.Operation.Tags = append(o.Operation.Tags, tags...)
 	return o
 }
 
+// Parameters adds parameters to the operation.
 func (o *Operation) Parameters(ps *Parameters) *Operation {
 	if o.Operation.Parameters == nil {
 		o.Operation.Parameters = []*v3.Parameter{}
@@ -93,6 +69,7 @@ func (o *Operation) Parameters(ps *Parameters) *Operation {
 	return o
 }
 
+// Response adds a response to the operation.
 func (o *Operation) Response(code string, cb func(r *Response)) *Operation {
 	if o.Operation.Responses == nil {
 		o.Operation.Responses = &v3.Responses{}

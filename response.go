@@ -5,17 +5,20 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+// Response provides DSL methods for creating OpenAPI responses.
 type Response struct {
 	Response *v3.Response
 
 	ErrHelper
 }
 
+// Description sets the description of the response.
 func (r *Response) Description(description string) *Response {
 	r.Response.Description = description
 	return r
 }
 
+// Header adds a header to the response.
 func (r *Response) Header(name string, m *Model, mods ...func(h *Header)) *Response {
 	if r.Response.Headers == nil {
 		r.Response.Headers = orderedmap.New[string, *v3.Header]()
@@ -37,6 +40,7 @@ func (r *Response) Header(name string, m *Model, mods ...func(h *Header)) *Respo
 	return r
 }
 
+// Content adds a content type to the response.
 func (r *Response) Content(code string, m *Model) *Response {
 	if r.Response.Content == nil {
 		r.Response.Content = orderedmap.New[string, *v3.MediaType]()
