@@ -99,6 +99,11 @@ func main() {
 				Content("application/json", arrest.ModelFrom[Error]())
 		})
 
+
+	if doc.Err() != nil {
+		panic(doc.Err())
+	}
+	
 	rend, err := doc.OpenAPI.Render()
 	if err != nil {
 		panic(err)
@@ -112,6 +117,49 @@ func main() {
 # Features
 
 The aim is to be able to speed up building your specs while still giving you full flexibility. This tool is aimed at the high level. If it doesn't do something yet and you think it should, PRs welcome. However, in the meantime, you can just use the `OpenAPI` struct directly to modify it using "hard mode". In face, if you can come up with the standardized method this way first, that will make the PR all the easier.
+
+# The DSL
+
+That's a Domain Specific Language for those who may not know. This library is based around building a sort of DSL inside of Go. It makes heavy use of method chaining to help abbreviate the code necessary to build a spec. This takes a little getting used.
+
+The chaining is setup to be used in paragraphs or stanzas around the primary components. We consider the following pieces to be primary components:
+
+* Document
+* Operation
+
+Therefore, the encouraged style is to build up the Document and then build up each Operation. Each primary component returns the component object and then all the methods of the primary only return that object.
+
+```go
+doc := arrest.NewDocument("My API").AddServer("http://example.com")
+
+doc.Get("/path").Summary("Get a thing") // and on
+
+doc.Post("/path").Summary("Post a thing") // and on
+```
+
+Within each primary there are secondary components. To avoid breaking up your primary paragraphs, these do not return the different types for configuration but make use of callbacks.
+
+```go
+doc.Get("/path").Summary("Get a thing").
+    OperationID("getThing").
+    Parameters(func(p *arrest.Parameters) {
+        p.P(0, func(p *arrest.Parameter) {
+            p.Name("id").In("path").Required()
+        })
+    }).
+    Response("200", func(r *arrest.Response) {
+        r.Description("The thing").
+            Content("application/json", arrest.ModelFrom[Thing]())
+    })
+```
+
+Finally, when you're finished you need to check to see if errors occurred. The system should not panic, but it records errors as it goes. You can check for them at the end, or any time in the middle by calling the `Err()` method on the document. You can check for errors in operations or other parts as well. Errors all flow upward to the parent component, but you can check them at any level:
+
+```go
+if doc.Err() != nil {
+    // handle the error here, of course
+}
+```
 
 # Installation
 

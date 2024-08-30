@@ -92,6 +92,10 @@ func main() {
 				Content("application/json", arrest.ModelFrom[Error]())
 		})
 
+	if doc.Err() != nil {
+		panic(doc.Err())
+	}
+
 	rend, err := doc.OpenAPI.Render()
 	if err != nil {
 		panic(err)

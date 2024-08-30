@@ -6,16 +6,21 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+// Document providees DSL methods for creating OpenAPI documents.
 type Document struct {
+	// OpenAPI is the underlying OpenAPI document.
 	OpenAPI *v3.Document
 
 	ErrHelper
 }
 
+// NewDocumentFrom creates a new Document from a v3.Document. This allows you
+// to add to an existing document using the DSL.
 func NewDocumentFrom(v3doc *v3.Document) *Document {
 	return &Document{OpenAPI: v3doc}
 }
 
+// NewDocument creates a new Document with the given title.
 func NewDocument(title string) *Document {
 	return &Document{
 		OpenAPI: &v3.Document{
@@ -44,6 +49,8 @@ func (d *Document) pathItem(pattern string) *v3.PathItem {
 	return pis.GetOrZero(pattern)
 }
 
+// Get creates a new GET operation at the given pattern. The Operation is
+// returned to be manipulated further.
 func (d *Document) Get(pattern string) *Operation {
 	pi := d.pathItem(pattern)
 
@@ -58,6 +65,8 @@ func (d *Document) Get(pattern string) *Operation {
 	return o
 }
 
+// Post creates a new POST operation at the given pattern. The Operation is
+// returned to be manipulated further.
 func (d *Document) Post(pattern string) *Operation {
 	pi := d.pathItem(pattern)
 
@@ -72,6 +81,7 @@ func (d *Document) Post(pattern string) *Operation {
 	return o
 }
 
+// AddServer adds a new server URL to the document.
 func (d *Document) AddServer(url string) *Document {
 	if d.OpenAPI.Servers == nil {
 		d.OpenAPI.Servers = []*v3.Server{}
