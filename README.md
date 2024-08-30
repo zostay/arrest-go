@@ -142,8 +142,8 @@ Within each primary there are secondary components. To avoid breaking up your pr
 ```go
 doc.Get("/path").Summary("Get a thing").
     OperationID("getThing").
-	Parameters(
-		arrest.ParametersFromReflect(reflect.TypeOf(GetThing)).
+    Parameters(
+        arrest.ParametersFromReflect(reflect.TypeOf(GetThing)).
             p.P(0, func(p *arrest.Parameter) {
                 p.Name("id").In("query").Required()
             })
