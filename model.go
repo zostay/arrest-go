@@ -3,6 +3,7 @@ package arrest
 import (
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -129,4 +130,10 @@ func ModelFromReflect(t reflect.Type) *Model {
 func ModelFrom[T any]() *Model {
 	var t T
 	return ModelFromReflect(reflect.TypeOf(t))
+}
+
+func SchemaRef(fqn string) *Model {
+	return &Model{
+		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", fqn)),
+	}
 }

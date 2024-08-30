@@ -1,6 +1,8 @@
 package arrest
 
 import (
+	"context"
+
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -89,4 +91,62 @@ func (d *Document) AddServer(url string) *Document {
 
 	d.OpenAPI.Servers = append(d.OpenAPI.Servers, &v3.Server{URL: url})
 	return d
+}
+
+func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
+	if d.OpenAPI.Components == nil {
+		d.OpenAPI.Components = &v3.Components{}
+	}
+
+	c := d.OpenAPI.Components
+	if c.Schemas == nil {
+		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
+	}
+
+	c.Schemas.Set(fqn, m.SchemaProxy)
+
+	return d
+}
+
+// Operations lists all the operations in the document.
+func (d *Document) Operations(ctx context.Context) []*Operation {
+	if d.OpenAPI.Paths == nil {
+		return nil
+	}
+
+	if d.OpenAPI.Paths.PathItems == nil {
+		return nil
+	}
+
+	os := make([]*Operation, 0, d.OpenAPI.Paths.PathItems.Len())
+	for pair := range orderedmap.Iterate(ctx, d.OpenAPI.Paths.PathItems) {
+		_, pi := pair.Key(), pair.Value()
+
+		if pi.Get != nil {
+			os = append(os, &Operation{Operation: pi.Get})
+		}
+		if pi.Post != nil {
+			os = append(os, &Operation{Operation: pi.Post})
+		}
+		if pi.Delete != nil {
+			os = append(os, &Operation{Operation: pi.Delete})
+		}
+		if pi.Put != nil {
+			os = append(os, &Operation{Operation: pi.Put})
+		}
+		if pi.Patch != nil {
+			os = append(os, &Operation{Operation: pi.Patch})
+		}
+		if pi.Options != nil {
+			os = append(os, &Operation{Operation: pi.Options})
+		}
+		if pi.Head != nil {
+			os = append(os, &Operation{Operation: pi.Head})
+		}
+		if pi.Trace != nil {
+			os = append(os, &Operation{Operation: pi.Trace})
+		}
+	}
+
+	return os
 }
