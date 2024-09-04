@@ -140,6 +140,32 @@ func (d *Document) SchemaComponentRef(m *Model) *SchemaComponent {
 	}
 }
 
+// SchemaComponents lists all the schema components in the document.
+func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
+	if d.OpenAPI.Components == nil {
+		return nil
+	}
+
+	if d.OpenAPI.Components.Schemas == nil {
+		return nil
+	}
+
+	scs := make([]*SchemaComponent, 0, d.OpenAPI.Components.Schemas.Len())
+	for pair := range orderedmap.Iterate(ctx, d.OpenAPI.Components.Schemas) {
+		name, sp := pair.Key(), pair.Value()
+
+		scs = append(scs, &SchemaComponent{
+			schema: &Model{
+				Name:        name,
+				SchemaProxy: sp,
+			},
+			ref: SchemaRef(name),
+		})
+	}
+
+	return scs
+}
+
 // Operations lists all the operations in the document.
 func (d *Document) Operations(ctx context.Context) []*Operation {
 	if d.OpenAPI.Paths == nil {
@@ -152,7 +178,7 @@ func (d *Document) Operations(ctx context.Context) []*Operation {
 
 	os := make([]*Operation, 0, d.OpenAPI.Paths.PathItems.Len())
 	for pair := range orderedmap.Iterate(ctx, d.OpenAPI.Paths.PathItems) {
-		_, pi := pair.Key(), pair.Value()
+		pi := pair.Value()
 
 		if pi.Get != nil {
 			os = append(os, &Operation{Operation: pi.Get})
