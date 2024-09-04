@@ -52,13 +52,18 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 
 		fName := f.Name
 		fType := f.Type
-		arrestTag := f.Tag.Get("arrest")
 		jsonTag := f.Tag.Get("json")
 
-		if arrestTag != "" {
-			fName = arrestTag
-		} else if jsonTag != "" {
-			fName = jsonTag
+		if jsonTag != "" {
+			parts := strings.Split(jsonTag, ",")
+			switch parts[0] {
+			case "":
+				// do nothing
+			case "-":
+				continue
+			default:
+				fName = parts[0]
+			}
 		}
 
 		fSchema, err := makeSchemaProxy(fType)
