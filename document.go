@@ -13,6 +13,10 @@ type Document struct {
 	// OpenAPI is the underlying OpenAPI document.
 	OpenAPI *v3.Document
 
+	// PackageMap maps OpenAPI "package names" to Go package names. This is
+	// used in SchemaComponentRef.
+	PkgMap map[string]string
+
 	ErrHelper
 }
 
@@ -32,6 +36,18 @@ func NewDocument(title string) *Document {
 			},
 		},
 	}
+}
+
+func (d *Document) PackageMap(pairs ...string) *Document {
+	if d.PkgMap == nil {
+		d.PkgMap = make(map[string]string)
+	}
+
+	for i := 0; i < len(pairs); i += 2 {
+		d.PkgMap[pairs[i]] = pairs[i+1]
+	}
+
+	return d
 }
 
 func (d *Document) pathItem(pattern string) *v3.PathItem {
@@ -93,6 +109,11 @@ func (d *Document) AddServer(url string) *Document {
 	return d
 }
 
+// SchemaComponent adds a schema component to the document. You can then use
+//
+//	arrest.SchemaRef(fqn)
+//
+// to reference this schema in other parts of the document.
 func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	if d.OpenAPI.Components == nil {
 		d.OpenAPI.Components = &v3.Components{}
@@ -106,6 +127,17 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	c.Schemas.Set(fqn, m.SchemaProxy)
 
 	return d
+}
+
+func (d *Document) SchemaComponentRef(m *Model) *SchemaComponent {
+	fqn := m.MappedName(d.PkgMap)
+
+	d.SchemaComponent(fqn, m)
+
+	return &SchemaComponent{
+		schema: m,
+		ref:    SchemaRef(fqn),
+	}
 }
 
 // Operations lists all the operations in the document.

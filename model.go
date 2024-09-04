@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -16,9 +17,29 @@ var ErrUnsupportedModelType = errors.New("unsupported model type")
 // Model provides DSL methods for creating OpenAPI schema objects based on Go
 // types.
 type Model struct {
+	Name        string
 	SchemaProxy *base.SchemaProxy
 
 	ErrHelper
+}
+
+func (m *Model) MappedName(pkgMap map[string]string) string {
+	if m.Name == "" {
+		return ""
+	}
+
+	for oasPkg, goPkg := range pkgMap {
+		if trimName := strings.TrimPrefix(m.Name, goPkg); trimName != m.Name && trimName[0] == '.' {
+			return oasPkg + trimName
+		}
+	}
+
+	return m.Name
+}
+
+func (m *Model) Description(description string) *Model {
+	m.SchemaProxy.Schema().Description = description
+	return m
 }
 
 func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
@@ -123,7 +144,8 @@ func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 // ModelFromReflect creates a new Model from a reflect.Type.
 func ModelFromReflect(t reflect.Type) *Model {
 	sp, err := makeSchemaProxy(t)
-	return withErr(&Model{SchemaProxy: sp}, err)
+	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
+	return withErr(&Model{Name: name, SchemaProxy: sp}, err)
 }
 
 // ModelFrom creates a new Model from a type.
@@ -134,6 +156,7 @@ func ModelFrom[T any]() *Model {
 
 func SchemaRef(fqn string) *Model {
 	return &Model{
+		Name:        fqn,
 		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", fqn)),
 	}
 }
