@@ -2,7 +2,9 @@ package arrest
 
 import (
 	"context"
+	"errors"
 
+	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -11,7 +13,10 @@ import (
 // Document providees DSL methods for creating OpenAPI documents.
 type Document struct {
 	// OpenAPI is the underlying OpenAPI document.
-	OpenAPI *v3.Document
+	OpenAPI libopenapi.Document
+
+	// DataModel is the v3 DataModel from the document.
+	DataModel *libopenapi.DocumentModel[v3.Document]
 
 	// PackageMap maps OpenAPI "package names" to Go package names. This is
 	// used in SchemaComponentRef.
@@ -20,22 +25,56 @@ type Document struct {
 	ErrHelper
 }
 
+// NewDocumentFromBytes creates a new Document from raw YAML bytes.
+func NewDocumentFromBytes(bs []byte) (*Document, error) {
+	doc, err := libopenapi.NewDocument(bs)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDocumentFrom(doc)
+}
+
 // NewDocumentFrom creates a new Document from a v3.Document. This allows you
 // to add to an existing document using the DSL.
-func NewDocumentFrom(v3doc *v3.Document) *Document {
-	return &Document{OpenAPI: v3doc}
+func NewDocumentFrom(doc libopenapi.Document) (*Document, error) {
+	dm, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+
+	return &Document{
+		OpenAPI:   doc,
+		DataModel: dm,
+	}, nil
 }
 
 // NewDocument creates a new Document with the given title.
-func NewDocument(title string) *Document {
-	return &Document{
-		OpenAPI: &v3.Document{
-			Version: "3.1.0",
-			Info: &base.Info{
-				Title: title,
-			},
+func NewDocument(title string) (*Document, error) {
+	doc := &v3.Document{
+		Version: "3.1.0",
+		Info: &base.Info{
+			Title: title,
 		},
 	}
+
+	bs, err := doc.Render()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDocumentFromBytes(bs)
+}
+
+func (d *Document) Refresh() error {
+	_, _, dm, errs := d.OpenAPI.RenderAndReload()
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	d.DataModel = dm
+
+	return nil
 }
 
 func (d *Document) PackageMap(pairs ...string) *Document {
@@ -51,15 +90,15 @@ func (d *Document) PackageMap(pairs ...string) *Document {
 }
 
 func (d *Document) pathItem(pattern string) *v3.PathItem {
-	if d.OpenAPI.Paths == nil {
-		d.OpenAPI.Paths = &v3.Paths{}
+	if d.DataModel.Model.Paths == nil {
+		d.DataModel.Model.Paths = &v3.Paths{}
 	}
 
-	if d.OpenAPI.Paths.PathItems == nil {
-		d.OpenAPI.Paths.PathItems = orderedmap.New[string, *v3.PathItem]()
+	if d.DataModel.Model.Paths.PathItems == nil {
+		d.DataModel.Model.Paths.PathItems = orderedmap.New[string, *v3.PathItem]()
 	}
 
-	pis := d.OpenAPI.Paths.PathItems
+	pis := d.DataModel.Model.Paths.PathItems
 	if _, hasPi := pis.Get(pattern); !hasPi {
 		pis.Set(pattern, &v3.PathItem{})
 	}
@@ -101,11 +140,11 @@ func (d *Document) Post(pattern string) *Operation {
 
 // AddServer adds a new server URL to the document.
 func (d *Document) AddServer(url string) *Document {
-	if d.OpenAPI.Servers == nil {
-		d.OpenAPI.Servers = []*v3.Server{}
+	if d.DataModel.Model.Servers == nil {
+		d.DataModel.Model.Servers = []*v3.Server{}
 	}
 
-	d.OpenAPI.Servers = append(d.OpenAPI.Servers, &v3.Server{URL: url})
+	d.DataModel.Model.Servers = append(d.DataModel.Model.Servers, &v3.Server{URL: url})
 	return d
 }
 
@@ -115,11 +154,11 @@ func (d *Document) AddServer(url string) *Document {
 //
 // to reference this schema in other parts of the document.
 func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
-	if d.OpenAPI.Components == nil {
-		d.OpenAPI.Components = &v3.Components{}
+	if d.DataModel.Model.Components == nil {
+		d.DataModel.Model.Components = &v3.Components{}
 	}
 
-	c := d.OpenAPI.Components
+	c := d.DataModel.Model.Components
 	if c.Schemas == nil {
 		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
 	}
@@ -142,16 +181,16 @@ func (d *Document) SchemaComponentRef(m *Model) *SchemaComponent {
 
 // SchemaComponents lists all the schema components in the document.
 func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
-	if d.OpenAPI.Components == nil {
+	if d.DataModel.Model.Components == nil {
 		return nil
 	}
 
-	if d.OpenAPI.Components.Schemas == nil {
+	if d.DataModel.Model.Components.Schemas == nil {
 		return nil
 	}
 
-	scs := make([]*SchemaComponent, 0, d.OpenAPI.Components.Schemas.Len())
-	for pair := range orderedmap.Iterate(ctx, d.OpenAPI.Components.Schemas) {
+	scs := make([]*SchemaComponent, 0, d.DataModel.Model.Components.Schemas.Len())
+	for pair := range orderedmap.Iterate(ctx, d.DataModel.Model.Components.Schemas) {
 		name, sp := pair.Key(), pair.Value()
 
 		scs = append(scs, &SchemaComponent{
@@ -168,16 +207,16 @@ func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
 
 // Operations lists all the operations in the document.
 func (d *Document) Operations(ctx context.Context) []*Operation {
-	if d.OpenAPI.Paths == nil {
+	if d.DataModel.Model.Paths == nil {
 		return nil
 	}
 
-	if d.OpenAPI.Paths.PathItems == nil {
+	if d.DataModel.Model.Paths.PathItems == nil {
 		return nil
 	}
 
-	os := make([]*Operation, 0, d.OpenAPI.Paths.PathItems.Len())
-	for pair := range orderedmap.Iterate(ctx, d.OpenAPI.Paths.PathItems) {
+	os := make([]*Operation, 0, d.DataModel.Model.Paths.PathItems.Len())
+	for pair := range orderedmap.Iterate(ctx, d.DataModel.Model.Paths.PathItems) {
 		pi := pair.Value()
 
 		if pi.Get != nil {

@@ -52,8 +52,9 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 
 		fName := f.Name
 		fType := f.Type
+		fReplaceType := ""
+		fProps := make(map[string]string)
 		jsonTag := f.Tag.Get("json")
-
 		if jsonTag != "" {
 			parts := strings.Split(jsonTag, ",")
 			switch parts[0] {
@@ -66,10 +67,56 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 			}
 		}
 
-		fSchema, err := makeSchemaProxy(fType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve field named %q: %v", f.Name, err)
+		openApiTag := f.Tag.Get("openapi")
+		if openApiTag != "" {
+			parts := strings.Split(openApiTag, ",")
+			switch parts[0] {
+			case "":
+				// do nothing
+			case "-":
+				continue
+			default:
+				fName = parts[0]
+			}
+
+			for _, part := range parts[1:] {
+				pair := strings.Split(part, "=")
+				if len(pair) != 2 {
+					continue
+				}
+				key, value := pair[0], pair[1]
+
+				if key == "type" {
+					fReplaceType = value
+				} else {
+					fProps[key] = value
+				}
+			}
 		}
+
+		var fSchema *base.SchemaProxy
+		if fReplaceType != "" {
+			fSchema = base.CreateSchemaProxy(&base.Schema{
+				Type: []string{fReplaceType},
+			})
+		} else {
+			var err error
+			fSchema, err = makeSchemaProxy(fType)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+			}
+		}
+
+		// TODO This would be super cool to implement.
+		//schemaLow := fSchema.GoLow().Schema()
+		//for key, value := range fProps {
+		//	switch key {
+		//	case "content-type":
+		//		schemaLow.ContentMediaType = low.NodeReference[string]{Value: value}
+		//	case "content-encoding":
+		//		schemaLow.ContentEncoding = low.NodeReference[string]{Value: value}
+		//	}
+		//}
 
 		fieldProps.Set(fName, fSchema)
 	}
