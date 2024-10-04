@@ -36,6 +36,12 @@ func (o *Operation) RequestBody(mt string, model *Model) *Operation {
 	return o
 }
 
+// Description sets the description for the operation.
+func (o *Operation) Description(description string) *Operation {
+	o.Operation.Description = description
+	return o
+}
+
 // Summary sets the summary for the operation.
 func (o *Operation) Summary(summary string) *Operation {
 	o.Operation.Summary = summary
