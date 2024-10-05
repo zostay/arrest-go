@@ -43,6 +43,8 @@ func (m *Model) Description(description string) *Model {
 }
 
 func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
+	doc, fieldDocs, _ := GoDocForStruct(t)
+
 	fieldProps := orderedmap.New[string, *base.SchemaProxy]()
 	for i := range t.NumField() {
 		f := t.Field(i)
@@ -52,52 +54,24 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 
 		fName := f.Name
 		fType := f.Type
-		fReplaceType := ""
-		fProps := make(map[string]string)
-		jsonTag := f.Tag.Get("json")
-		if jsonTag != "" {
-			parts := strings.Split(jsonTag, ",")
-			switch parts[0] {
-			case "":
-				// do nothing
-			case "-":
-				continue
-			default:
-				fName = parts[0]
-			}
+
+		info := NewTagInfo(f.Tag)
+		if info.HasName() {
+			fName = info.Name
 		}
 
-		openApiTag := f.Tag.Get("openapi")
-		if openApiTag != "" {
-			parts := strings.Split(openApiTag, ",")
-			switch parts[0] {
-			case "":
-				// do nothing
-			case "-":
-				continue
-			default:
-				fName = parts[0]
-			}
-
-			for _, part := range parts[1:] {
-				pair := strings.Split(part, "=")
-				if len(pair) != 2 {
-					continue
-				}
-				key, value := pair[0], pair[1]
-
-				if key == "type" {
-					fReplaceType = value
-				} else {
-					fProps[key] = value
-				}
-			}
+		fDescription := ""
+		if fieldDocs != nil {
+			fDescription = fieldDocs[f.Name]
 		}
+
+		fReplaceType := info.ReplacementType()
 
 		var fSchema *base.SchemaProxy
 		if fReplaceType != "" {
 			fSchema = base.CreateSchemaProxy(&base.Schema{
-				Type: []string{fReplaceType},
+				Description: fDescription,
+				Type:        []string{fReplaceType},
 			})
 		} else {
 			var err error
@@ -105,11 +79,15 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 			}
+
+			if fDescription != "" {
+				fSchema.Schema().Description = fDescription
+			}
 		}
 
 		// TODO This would be super cool to implement.
 		//schemaLow := fSchema.GoLow().Schema()
-		//for key, value := range fProps {
+		//for key, value := range info.Props {
 		//	switch key {
 		//	case "content-type":
 		//		schemaLow.ContentMediaType = low.NodeReference[string]{Value: value}
@@ -122,8 +100,9 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 	}
 
 	schema := &base.Schema{
-		Type:       []string{"object"},
-		Properties: fieldProps,
+		Description: doc,
+		Type:        []string{"object"},
+		Properties:  fieldProps,
 	}
 
 	return base.CreateSchemaProxy(schema), nil
