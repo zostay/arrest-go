@@ -99,7 +99,7 @@ func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 
 				info := NewTagInfo(docField.Tag)
 				if info.HasName() {
-					openApiKey = info.Name
+					openApiKey = info.Name()
 				}
 
 				fields[openApiKey] = docField.Comment

@@ -56,8 +56,12 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 		fType := f.Type
 
 		info := NewTagInfo(f.Tag)
+		if info.IsIgnored() {
+			continue
+		}
+
 		if info.HasName() {
-			fName = info.Name
+			fName = info.Name()
 		}
 
 		fDescription := ""
@@ -87,7 +91,7 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 
 		// TODO This would be super cool to implement.
 		//schemaLow := fSchema.GoLow().Schema()
-		//for key, value := range info.Props {
+		//for key, value := range info.Props() {
 		//	switch key {
 		//	case "content-type":
 		//		schemaLow.ContentMediaType = low.NodeReference[string]{Value: value}

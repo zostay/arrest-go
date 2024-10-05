@@ -11,8 +11,12 @@ func (tag JSONTag) Parts() []string {
 	return strings.Split(string(tag), ",")
 }
 
+func (tag JSONTag) IsIgnored() bool {
+	return len(tag.Parts()) > 0 && tag.Name() == "-"
+}
+
 func (tag JSONTag) HasName() bool {
-	return len(tag.Parts()) > 0 && tag.Name() != "-"
+	return len(tag.Parts()) > 0 && tag.Name() != "-" && tag.Name() != ""
 }
 
 func (tag JSONTag) Name() string {
@@ -29,8 +33,12 @@ func (tag OpenAPITag) Parts() []string {
 	return strings.Split(string(tag), ",")
 }
 
+func (tag OpenAPITag) IsIgnored() bool {
+	return len(tag.Parts()) > 0 && tag.Name() == "-"
+}
+
 func (tag OpenAPITag) HasName() bool {
-	return len(tag.Parts()) > 0 && tag.Name() != "-"
+	return len(tag.Parts()) > 0 && tag.Name() != "-" && tag.Name() != ""
 }
 
 func (tag OpenAPITag) Name() string {
@@ -55,32 +63,42 @@ func (tag OpenAPITag) Props() map[string]string {
 }
 
 type TagInfo struct {
-	Name  string
-	Props map[string]string
+	jsonTag    JSONTag
+	openAPITag OpenAPITag
 }
 
 func NewTagInfo(tag reflect.StructTag) *TagInfo {
 	jsonTag := JSONTag(tag.Get("json"))
 	openApiTag := OpenAPITag(tag.Get("openapi"))
 
-	name := "-"
-	switch {
-	case openApiTag.HasName():
-		name = openApiTag.Name()
-	case jsonTag.HasName():
-		name = jsonTag.Name()
-	}
-
 	return &TagInfo{
-		Name:  name,
-		Props: openApiTag.Props(),
+		jsonTag:    jsonTag,
+		openAPITag: openApiTag,
 	}
+}
+
+func (info *TagInfo) IsIgnored() bool {
+	return info.jsonTag.IsIgnored() || info.openAPITag.IsIgnored()
 }
 
 func (info *TagInfo) HasName() bool {
-	return info.Name != "-" && info.Name != ""
+	return info.openAPITag.HasName() || info.jsonTag.HasName()
+}
+
+func (info *TagInfo) Name() string {
+	switch {
+	case info.openAPITag.HasName():
+		return info.openAPITag.Name()
+	case info.jsonTag.HasName():
+		return info.jsonTag.Name()
+	}
+	return ""
+}
+
+func (info *TagInfo) Props() map[string]string {
+	return info.openAPITag.Props()
 }
 
 func (info *TagInfo) ReplacementType() string {
-	return info.Props["type"]
+	return info.Props()["type"]
 }
