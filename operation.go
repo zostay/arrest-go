@@ -3,6 +3,7 @@ package arrest
 import (
 	"fmt"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 )
@@ -94,6 +95,20 @@ func (o *Operation) Response(code string, cb func(r *Response)) *Operation {
 	o.AddHandler(res)
 
 	cb(res)
+
+	return o
+}
+
+// SecurityRequirement configures the security scopes for this operation. The key in
+// the map is the security scheme name and the value is the list of scopes.
+func (o *Operation) SecurityRequirement(reqs map[string][]string) *Operation {
+	if o.Operation.Security == nil {
+		o.Operation.Security = []*base.SecurityRequirement{}
+	}
+
+	o.Operation.Security = append(o.Operation.Security, &base.SecurityRequirement{
+		Requirements: orderedmap.ToOrderedMap(reqs),
+	})
 
 	return o
 }

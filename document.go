@@ -148,6 +148,20 @@ func (d *Document) AddServer(url string) *Document {
 	return d
 }
 
+// SecurityRequirement configures the global security scopes. The key in
+// the map is the security scheme name and the value is the list of scopes.
+func (d *Document) SecurityRequirement(reqs map[string][]string) *Document {
+	if d.DataModel.Model.Security == nil {
+		d.DataModel.Model.Security = []*base.SecurityRequirement{}
+	}
+
+	d.DataModel.Model.Security = append(d.DataModel.Model.Security, &base.SecurityRequirement{
+		Requirements: orderedmap.ToOrderedMap(reqs),
+	})
+
+	return d
+}
+
 // SchemaComponent adds a schema component to the document. You can then use
 //
 //	arrest.SchemaRef(fqn)
@@ -164,6 +178,23 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	}
 
 	c.Schemas.Set(fqn, m.SchemaProxy)
+
+	return d
+}
+
+// SecuritySchemeComponent adds a security scheme component to the document. You
+// can then use the fqn to reference this schema in other parts of the document.
+func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Document {
+	if d.DataModel.Model.Components == nil {
+		d.DataModel.Model.Components = &v3.Components{}
+	}
+
+	c := d.DataModel.Model.Components
+	if c.SecuritySchemes == nil {
+		c.SecuritySchemes = orderedmap.New[string, *v3.SecurityScheme]()
+	}
+
+	c.SecuritySchemes.Set(fqn, m.SecurityScheme)
 
 	return d
 }
