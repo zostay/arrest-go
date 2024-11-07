@@ -172,6 +172,19 @@ if doc.Err() != nil {
 go get github.com/zostay/arrest-go
 ```
 
+# Design Note
+
+This library is being deliberately design in such a way as to be replaced with a
+second version later. Some of the issues are complicated and I want a bad
+implementation that gets me started so I can explore issues and then work my
+way toward a better solution.
+
+For example, I would like the `./gin` package to perform code generation of the
+handlers to build REST APIs that resemble regular Go code. But to get there I
+need to have a good handle on how I want those handlers to look like before I
+can start building those templates. In the meantime, the package merely provides
+some helps toward integrating with the Gin framework.
+
 # Special Thanks
 
 Thanks to [pb33f](https://pb33f.io/) for the excellent [libopenapi](https://github.com/pb33f/libopenapi) library. This library is built on top of that one.

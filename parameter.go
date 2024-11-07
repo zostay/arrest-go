@@ -77,6 +77,13 @@ func ParametersFrom[T any]() *Parameters {
 	return ParametersFromReflect(reflect.TypeOf(t))
 }
 
+// NParameters creates a new Parameters with the given number of parameters.
+func NParameters(n int) *Parameters {
+	return &Parameters{
+		Parameters: make([]*Parameter, n),
+	}
+}
+
 // P returns the parameter at the given index and calls the callback with it.
 func (p *Parameters) P(idx int, cb func(p *Parameter)) *Parameters {
 	cb(p.Parameters[idx])
@@ -105,5 +112,12 @@ func (p *Parameter) Required() *Parameter {
 // Description sets the description of the parameter.
 func (p *Parameter) Description(description string) *Parameter {
 	p.Parameter.Description = description
+	return p
+}
+
+// Model sets the schema of the parameter.
+func (p *Parameter) Model(m *Model) *Parameter {
+	p.AddHandler(m)
+	p.Parameter.Schema = m.SchemaProxy
 	return p
 }
