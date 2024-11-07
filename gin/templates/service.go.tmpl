@@ -1,0 +1,64 @@
+package {{.PkgName}}
+
+import (
+    "strconv"
+)
+
+{{define "params"}}{{range $i, $p := .}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}{{end}}
+{{range .Handlers}}
+type {{.Name}} func({{template "params" .Input}}) ({{template "params" .Output}}{{if .Output}}, {{end}}err error)
+{{end}}
+
+type {{.ServiceName}} struct {
+    {{range .Handlers}}
+    {{.Name}} {{.Name}}
+    {{end}}
+
+    ErrorMessage func(c *gin.Context, err error, msg string)
+}
+
+func (s *{{.ServiceName}}) RegisterHandlers(r *gin.RouterGroup) {
+    {{range .Handlers}}
+    r.{{.Method}}("{{.Path}}", s.{{.Name}}Handler)
+    {{end}}
+}
+`
+{{range .Handler}}
+{{$h := .Handler}}
+func (s *{{.ServiceName}}) {{.Name}}Handler(c *gin.Context) {
+    {{range .Input}}
+        {{if ne .Type "string"}}p{{end}}{{.GoName}} := {{if eq .In "path" -}}
+            c.Param("{{.WireName}}")
+        {{else if eq .In "query" -}}
+            c.Query("{{.WireName}}")
+        {{else if eq .In "header" -}}
+            c.GetHeader("{{.WireName}}")
+        {{else if eq .In "cookied" -}}
+            {{panic "cookie not supported"}}
+        {{end}}
+
+        {{if ne .Type "string"}}
+        {{if eq .Type "int"}}
+            {{.GoName}}, err := strconv.ParseInt(p{{.GoName}}, 10, 64)
+        {{else if eq .Type "float"}}
+            {{.GoName}}, err := strconv.ParseFloat(p{{.GoName}}, 64)
+        {{else if eq .Type "bool"}}
+            {{.GoName}}, err := strconv.ParseBool(p{{.GoName}})
+        {{end}}
+        if err != nil {
+            s.ErrorMessage(c, err, "failed to decode {{.GoName}}")
+            return
+        }
+        {{end}}
+    {{end}}
+
+    {{range $i, $o := .Output}}{{if $i}}, {{end}}{{$o.GoName}}{{end}}{{if .Output}}, {{end}}err := s.{{$h.Name}}({{range .Input}}{{if ne .Type "string"}}{{.GoName}}, {{end}}{{end}})
+    if err != nil {
+        s.ErrorMessage(c, err, "failed to execute {{$h.Name}}")
+        return
+    }
+
+    {{if .Output}}
+        c.JSON(
+}
+{{end}}

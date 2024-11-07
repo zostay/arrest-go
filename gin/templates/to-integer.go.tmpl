@@ -1,0 +1,2 @@
+{{.Tmp}}, err := strconv.ParseInt({{.In}}, 10, 64)
+{{template "handle-err.go.tmpl" .In | printf "failed while parsing integer variable %q"}}
