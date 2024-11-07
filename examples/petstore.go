@@ -36,8 +36,12 @@ func ShowByPetID(petID string) (*Pet, error) {
 }
 
 func main() {
-	doc := arrest.NewDocument("Swagger Petstore").
-		AddServer("http://petstore.swagger.io/v1")
+	doc, err := arrest.NewDocument("Swagger Petstore")
+	if err != nil {
+		panic(err)
+	}
+
+	doc.AddServer("http://petstore.swagger.io/v1")
 
 	listPets := arrest.ParametersFromReflect(reflect.TypeOf(ListPets)).
 		P(0, func(p *arrest.Parameter) {
