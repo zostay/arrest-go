@@ -148,14 +148,15 @@ func (d *Document) AddServer(url string) *Document {
 	return d
 }
 
-// SecurityRequirement configures the global security scopes. The key in
+// AddSecurityRequirement configures the global security scopes. The key in
 // the map is the security scheme name and the value is the list of scopes.
-func (d *Document) SecurityRequirement(reqs map[string][]string) *Document {
-	if d.DataModel.Model.Security == nil {
-		d.DataModel.Model.Security = []*base.SecurityRequirement{}
+func (d *Document) AddSecurityRequirement(reqs map[string][]string) *Document {
+	m := d.DataModel.Model
+	if m.Security == nil {
+		m.Security = []*base.SecurityRequirement{}
 	}
 
-	d.DataModel.Model.Security = append(d.DataModel.Model.Security, &base.SecurityRequirement{
+	m.Security = append(m.Security, &base.SecurityRequirement{
 		Requirements: orderedmap.ToOrderedMap(reqs),
 	})
 
