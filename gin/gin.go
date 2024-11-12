@@ -40,6 +40,24 @@ func (d *Document) Post(pattern string) *Operation {
 	}
 }
 
+func (d *Document) Put(pattern string) *Operation {
+	return &Operation{
+		Operation: *d.Document.Post(pattern),
+		method:    http.MethodPut,
+		pattern:   pattern,
+		r:         d.r,
+	}
+}
+
+func (d *Document) Delete(pattern string) *Operation {
+	return &Operation{
+		Operation: *d.Document.Post(pattern),
+		method:    http.MethodDelete,
+		pattern:   pattern,
+		r:         d.r,
+	}
+}
+
 type Operation struct {
 	arrest.Operation
 	method  string

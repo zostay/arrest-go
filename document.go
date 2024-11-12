@@ -77,6 +77,21 @@ func (d *Document) Refresh() error {
 	return nil
 }
 
+func (d *Document) Title(title string) *Document {
+	d.DataModel.Model.Info.Title = title
+	return d
+}
+
+func (d *Document) Description(description string) *Document {
+	d.DataModel.Model.Info.Description = description
+	return d
+}
+
+func (d *Document) Version(version string) *Document {
+	d.DataModel.Model.Info.Version = version
+	return d
+}
+
 func (d *Document) PackageMap(pairs ...string) *Document {
 	if d.PkgMap == nil {
 		d.PkgMap = make(map[string]string)
@@ -132,6 +147,38 @@ func (d *Document) Post(pattern string) *Operation {
 	}
 
 	v3o := pi.Post
+
+	o := &Operation{Operation: v3o}
+	d.AddHandler(o)
+	return o
+}
+
+// Put creates a new PUT operation at the given pattern. The Operation is
+// returned to be manipulated further.
+func (d *Document) Put(pattern string) *Operation {
+	pi := d.pathItem(pattern)
+
+	if pi.Put == nil {
+		pi.Put = &v3.Operation{}
+	}
+
+	v3o := pi.Put
+
+	o := &Operation{Operation: v3o}
+	d.AddHandler(o)
+	return o
+}
+
+// Delete creates a new DELETE operation at the given pattern. The Operation is
+// returned to be manipulated further.
+func (d *Document) Delete(pattern string) *Operation {
+	pi := d.pathItem(pattern)
+
+	if pi.Delete == nil {
+		pi.Delete = &v3.Operation{}
+	}
+
+	v3o := pi.Delete
 
 	o := &Operation{Operation: v3o}
 	d.AddHandler(o)

@@ -1,6 +1,7 @@
 package arrest
 
 import (
+	"context"
 	"errors"
 	"reflect"
 
@@ -58,14 +59,19 @@ func ParametersFromReflect(t reflect.Type) *Parameters {
 	}
 
 	ps := &Parameters{
-		Parameters: make([]*Parameter, t.NumIn()),
+		Parameters: make([]*Parameter, 0, t.NumIn()),
 	}
 
 	for i := range t.NumIn() {
+		// Ignore context variables
+		if t.In(i).Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
+			continue
+		}
+
 		p := ParameterFromReflect(t.In(i))
 
 		ps.AddHandler(p)
-		ps.Parameters[i] = p
+		ps.Parameters = append(ps.Parameters, p)
 	}
 
 	return ps
@@ -79,9 +85,15 @@ func ParametersFrom[T any]() *Parameters {
 
 // NParameters creates a new Parameters with the given number of parameters.
 func NParameters(n int) *Parameters {
-	return &Parameters{
+	ps := &Parameters{
 		Parameters: make([]*Parameter, n),
 	}
+
+	for i := range ps.Parameters {
+		ps.Parameters[i] = &Parameter{Parameter: &v3.Parameter{}}
+	}
+
+	return ps
 }
 
 // P returns the parameter at the given index and calls the callback with it.
