@@ -227,6 +227,11 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 
 	c.Schemas.Set(fqn, m.SchemaProxy)
 
+	for goPkg, sp := range m.ExtractChildRefs() {
+		childFqn := MappedName(goPkg, d.PkgMap)
+		c.Schemas.Set(childFqn, sp)
+	}
+
 	return d
 }
 

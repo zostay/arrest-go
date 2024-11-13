@@ -14,27 +14,49 @@ import (
 // ErrUnsupportedModelType is returned when the model type is not supported.
 var ErrUnsupportedModelType = errors.New("unsupported model type")
 
+type refMapper struct {
+	prefix   string
+	makeRefs map[string]*base.SchemaProxy
+}
+
+func newRefMapper(prefix string) *refMapper {
+	return &refMapper{
+		prefix:   prefix,
+		makeRefs: make(map[string]*base.SchemaProxy),
+	}
+}
+
+func (m *refMapper) makeRef(fName string, sp *base.SchemaProxy) {
+	m.makeRefs[m.prefix+"."+fName] = sp
+}
+
 // Model provides DSL methods for creating OpenAPI schema objects based on Go
 // types.
 type Model struct {
 	Name        string
 	SchemaProxy *base.SchemaProxy
 
+	makeRefs map[string]*base.SchemaProxy
+
 	ErrHelper
 }
 
-func (m *Model) MappedName(pkgMap map[string]string) string {
-	if m.Name == "" {
+func MappedName(typName string, pkgMap map[string]string) string {
+	if typName == "" {
 		return ""
 	}
 
 	for oasPkg, goPkg := range pkgMap {
-		if trimName := strings.TrimPrefix(m.Name, goPkg); trimName != m.Name && trimName[0] == '.' {
+		if trimName := strings.TrimPrefix(typName, goPkg); trimName != typName && trimName[0] == '.' {
 			return oasPkg + trimName
 		}
 	}
 
-	return m.Name
+	return typName
+}
+
+func (m *Model) MappedName(pkgMap map[string]string) string {
+	return MappedName(m.Name, pkgMap)
 }
 
 func (m *Model) Description(description string) *Model {
@@ -42,7 +64,11 @@ func (m *Model) Description(description string) *Model {
 	return m
 }
 
-func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
+func (m *Model) ExtractChildRefs() map[string]*base.SchemaProxy {
+	return m.makeRefs
+}
+
+func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy, error) {
 	doc, fieldDocs, _ := GoDocForStruct(t)
 
 	fieldProps := orderedmap.New[string, *base.SchemaProxy]()
@@ -79,7 +105,7 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 			})
 		} else {
 			var err error
-			fSchema, err = makeSchemaProxy(fType)
+			fSchema, err = makeSchemaProxy(fType, makeRefs)
 			if err != nil {
 				return base.CreateSchemaProxy(&base.Schema{
 					Type: []string{"any"},
@@ -89,6 +115,10 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 			if fDescription != "" {
 				fSchema.Schema().Description = fDescription
 			}
+		}
+
+		if refName := info.RefName(); refName != "" {
+			makeRefs.makeRef(refName, fSchema)
 		}
 
 		// TODO This would be super cool to implement.
@@ -114,8 +144,8 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 	return base.CreateSchemaProxy(schema), nil
 }
 
-func makeSchemaProxySlice(t reflect.Type) (*base.SchemaProxy, error) {
-	sp, err := makeSchemaProxy(t.Elem())
+func makeSchemaProxySlice(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy, error) {
+	sp, err := makeSchemaProxy(t.Elem(), makeRefs)
 	if err != nil {
 		return base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"any"},
@@ -135,8 +165,8 @@ func makeSchemaProxySlice(t reflect.Type) (*base.SchemaProxy, error) {
 	return schema, nil
 }
 
-func makeSchemaProxyMap(t reflect.Type) (*base.SchemaProxy, error) {
-	sp, err := makeSchemaProxy(t.Elem())
+func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy, error) {
+	sp, err := makeSchemaProxy(t.Elem(), makeRefs)
 	if err != nil {
 		return base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"any"},
@@ -154,16 +184,16 @@ func makeSchemaProxyMap(t reflect.Type) (*base.SchemaProxy, error) {
 	return schema, nil
 }
 
-func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
+func makeSchemaProxy(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy, error) {
 	switch t.Kind() {
 	case reflect.Struct:
-		return makeSchemaProxyStruct(t)
+		return makeSchemaProxyStruct(t, makeRefs)
 	case reflect.Slice, reflect.Array:
-		return makeSchemaProxySlice(t)
+		return makeSchemaProxySlice(t, makeRefs)
 	case reflect.Map:
-		return makeSchemaProxyMap(t)
+		return makeSchemaProxyMap(t, makeRefs)
 	case reflect.Ptr:
-		return makeSchemaProxy(t.Elem())
+		return makeSchemaProxy(t.Elem(), makeRefs)
 	case reflect.Bool:
 		return base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"boolean"},
@@ -205,9 +235,10 @@ func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 
 // ModelFromReflect creates a new Model from a reflect.Type.
 func ModelFromReflect(t reflect.Type) *Model {
-	sp, err := makeSchemaProxy(t)
+	mr := newRefMapper(t.PkgPath())
+	sp, err := makeSchemaProxy(t, mr)
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
-	m := withErr(&Model{Name: name, SchemaProxy: sp}, err)
+	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs}, err)
 	if m.SchemaProxy == nil {
 		panic("nope")
 	} else if m.SchemaProxy.Schema() == nil {

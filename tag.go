@@ -54,10 +54,11 @@ func (tag OpenAPITag) Props() map[string]string {
 	parts := tag.Parts()
 	for _, part := range parts[1:] {
 		pair := strings.Split(part, "=")
-		if len(pair) != 2 {
+		if len(pair) == 2 {
+			props[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
 			continue
 		}
-		props[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
+		props[strings.TrimSpace(part)] = "true"
 	}
 	return props
 }
@@ -101,4 +102,8 @@ func (info *TagInfo) Props() map[string]string {
 
 func (info *TagInfo) ReplacementType() string {
 	return info.Props()["type"]
+}
+
+func (info *TagInfo) RefName() string {
+	return info.Props()["refName"]
 }
