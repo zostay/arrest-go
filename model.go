@@ -81,7 +81,9 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 			var err error
 			fSchema, err = makeSchemaProxy(fType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+				return base.CreateSchemaProxy(&base.Schema{
+					Type: []string{"any"},
+				}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 			}
 
 			if fDescription != "" {
@@ -115,7 +117,9 @@ func makeSchemaProxyStruct(t reflect.Type) (*base.SchemaProxy, error) {
 func makeSchemaProxySlice(t reflect.Type) (*base.SchemaProxy, error) {
 	sp, err := makeSchemaProxy(t.Elem())
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve inner type of array or slice: %v", err)
+		return base.CreateSchemaProxy(&base.Schema{
+			Type: []string{"any"},
+		}), fmt.Errorf("failed to resolve inner type of array or slice: %v", err)
 	}
 
 	schema := base.CreateSchemaProxy(&base.Schema{
@@ -172,7 +176,9 @@ func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 			Format: "double",
 		}), nil
 	default:
-		return nil, ErrUnsupportedModelType
+		return base.CreateSchemaProxy(&base.Schema{
+			Type: []string{"any"},
+		}), ErrUnsupportedModelType
 	}
 }
 
@@ -180,7 +186,13 @@ func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 func ModelFromReflect(t reflect.Type) *Model {
 	sp, err := makeSchemaProxy(t)
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
-	return withErr(&Model{Name: name, SchemaProxy: sp}, err)
+	m := withErr(&Model{Name: name, SchemaProxy: sp}, err)
+	if m.SchemaProxy == nil {
+		panic("nope")
+	} else if m.SchemaProxy.Schema() == nil {
+		panic("noper")
+	}
+	return m
 }
 
 // ModelFrom creates a new Model from a type.
