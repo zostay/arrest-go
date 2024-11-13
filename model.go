@@ -135,12 +135,33 @@ func makeSchemaProxySlice(t reflect.Type) (*base.SchemaProxy, error) {
 	return schema, nil
 }
 
+func makeSchemaProxyMap(t reflect.Type) (*base.SchemaProxy, error) {
+	sp, err := makeSchemaProxy(t.Elem())
+	if err != nil {
+		return base.CreateSchemaProxy(&base.Schema{
+			Type: []string{"any"},
+		}), fmt.Errorf("failed to resolve inner type of map: %v", err)
+	}
+
+	schema := base.CreateSchemaProxy(&base.Schema{
+		Type: []string{"object"},
+		AdditionalProperties: &base.DynamicValue[*base.SchemaProxy, bool]{
+			N: 0,
+			A: sp,
+		},
+	})
+
+	return schema, nil
+}
+
 func makeSchemaProxy(t reflect.Type) (*base.SchemaProxy, error) {
 	switch t.Kind() {
 	case reflect.Struct:
 		return makeSchemaProxyStruct(t)
 	case reflect.Slice, reflect.Array:
 		return makeSchemaProxySlice(t)
+	case reflect.Map:
+		return makeSchemaProxyMap(t)
 	case reflect.Ptr:
 		return makeSchemaProxy(t.Elem())
 	case reflect.Bool:
