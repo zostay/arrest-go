@@ -78,7 +78,7 @@ func (o *Operation) patternString() string {
 		pattern = pattern[1:]
 	}
 
-	paramRegex.ReplaceAllStringFunc(pattern, func(s string) string {
+	pattern = paramRegex.ReplaceAllStringFunc(pattern, func(s string) string {
 		return ":" + s[1:len(s)-1]
 	})
 
