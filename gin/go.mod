@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/zostay/arrest-go v0.0.0-20241106223450-9d43dc338b24
+	github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658
 )
 
 require (

@@ -42,7 +42,7 @@ func (d *Document) Post(pattern string) *Operation {
 
 func (d *Document) Put(pattern string) *Operation {
 	return &Operation{
-		Operation: *d.Document.Post(pattern),
+		Operation: *d.Document.Put(pattern),
 		method:    http.MethodPut,
 		pattern:   pattern,
 		r:         d.r,
@@ -51,7 +51,7 @@ func (d *Document) Put(pattern string) *Operation {
 
 func (d *Document) Delete(pattern string) *Operation {
 	return &Operation{
-		Operation: *d.Document.Post(pattern),
+		Operation: *d.Document.Delete(pattern),
 		method:    http.MethodDelete,
 		pattern:   pattern,
 		r:         d.r,
