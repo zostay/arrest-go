@@ -12,6 +12,11 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+type PackageMap struct {
+	OpenAPIName string
+	GoName      string
+}
+
 // Document providees DSL methods for creating OpenAPI documents.
 type Document struct {
 	// OpenAPI is the underlying OpenAPI document.
@@ -22,7 +27,7 @@ type Document struct {
 
 	// PackageMap maps OpenAPI "package names" to Go package names. This is
 	// used in SchemaComponentRef.
-	PkgMap map[string]string
+	PkgMap []PackageMap
 
 	ErrHelper
 }
@@ -96,11 +101,14 @@ func (d *Document) Version(version string) *Document {
 
 func (d *Document) PackageMap(pairs ...string) *Document {
 	if d.PkgMap == nil {
-		d.PkgMap = make(map[string]string)
+		d.PkgMap = make([]PackageMap, 0, len(pairs)/2)
 	}
 
 	for i := 0; i < len(pairs); i += 2 {
-		d.PkgMap[pairs[i]] = pairs[i+1]
+		d.PkgMap = append(d.PkgMap, PackageMap{
+			OpenAPIName: pairs[i],
+			GoName:      pairs[i+1],
+		})
 	}
 
 	return d
@@ -212,7 +220,7 @@ func (d *Document) AddSecurityRequirement(reqs map[string][]string) *Document {
 	return d
 }
 
-func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap map[string]string) *base.SchemaProxy {
+func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []PackageMap) *base.SchemaProxy {
 	if sp.IsReference() {
 		if strings.HasPrefix(sp.GetReference(), "#/components/schemas/") {
 			return base.CreateSchemaProxyRef(

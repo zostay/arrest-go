@@ -55,12 +55,13 @@ type Model struct {
 	ErrHelper
 }
 
-func MappedName(typName string, pkgMap map[string]string) string {
+func MappedName(typName string, pkgMap []PackageMap) string {
 	if typName == "" {
 		return ""
 	}
 
-	for oasPkg, goPkg := range pkgMap {
+	for _, item := range pkgMap {
+		oasPkg, goPkg := item.OpenAPIName, item.GoName
 		if trimName := strings.TrimPrefix(typName, goPkg); trimName != typName && trimName[0] == '.' {
 			return oasPkg + trimName
 		}
@@ -69,7 +70,7 @@ func MappedName(typName string, pkgMap map[string]string) string {
 	return typName
 }
 
-func (m *Model) MappedName(pkgMap map[string]string) string {
+func (m *Model) MappedName(pkgMap []PackageMap) string {
 	return MappedName(m.Name, pkgMap)
 }
 
