@@ -3,6 +3,8 @@ package arrest
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -210,6 +212,38 @@ func (d *Document) AddSecurityRequirement(reqs map[string][]string) *Document {
 	return d
 }
 
+func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap map[string]string) *base.SchemaProxy {
+	if sp.IsReference() {
+		if strings.HasPrefix(sp.GetReference(), "#/components/schemas/") {
+			return base.CreateSchemaProxyRef(
+				"#/components/schemas/" +
+					MappedName(
+						strings.TrimPrefix(sp.GetReference(), "#/components/schemas/"),
+						pkgMap,
+					))
+		}
+	} else if slices.Contains(sp.Schema().Type, "object") {
+		for pair := range orderedmap.Iterate(context.TODO(), sp.Schema().Properties) {
+			vsp := pair.Value()
+			newSp := remapSchemaRefs(ctx, vsp, pkgMap)
+			if newSp != nil {
+				sp.Schema().Properties.Set(pair.Key(), newSp)
+			}
+		}
+
+		return nil
+	} else if slices.Contains(sp.Schema().Type, "array") && sp.Schema().Items.IsA() {
+		newSp := remapSchemaRefs(ctx, sp.Schema().Items.A, pkgMap)
+		if newSp != nil {
+			sp.Schema().Items.A = newSp
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
 // SchemaComponent adds a schema component to the document. You can then use
 //
 //	arrest.SchemaRef(fqn)
@@ -230,6 +264,10 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	for goPkg, sp := range m.ExtractChildRefs() {
 		childFqn := MappedName(goPkg, d.PkgMap)
 		c.Schemas.Set(childFqn, sp)
+	}
+
+	if slices.Contains(m.SchemaProxy.Schema().Type, "object") {
+		remapSchemaRefs(context.TODO(), m.SchemaProxy, d.PkgMap)
 	}
 
 	return d

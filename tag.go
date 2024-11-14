@@ -107,3 +107,7 @@ func (info *TagInfo) ReplacementType() string {
 func (info *TagInfo) RefName() string {
 	return info.Props()["refName"]
 }
+
+func (info *TagInfo) ElemRefName() string {
+	return info.Props()["elemRefName"]
+}

@@ -15,19 +15,33 @@ import (
 var ErrUnsupportedModelType = errors.New("unsupported model type")
 
 type refMapper struct {
-	prefix   string
 	makeRefs map[string]*base.SchemaProxy
 }
 
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
-		prefix:   prefix,
 		makeRefs: make(map[string]*base.SchemaProxy),
 	}
 }
 
-func (m *refMapper) makeRef(fName string, sp *base.SchemaProxy) {
-	m.makeRefs[m.prefix+"."+fName] = sp
+func makeName(refName string, t reflect.Type, defaultSuffix string) string {
+	switch t.Kind() {
+	case reflect.Ptr:
+		return makeName(refName, t.Elem(), defaultSuffix)
+	case reflect.Slice:
+		return makeName(refName, t.Elem(), "List")
+	default:
+		if refName == "" {
+			refName = t.Name() + defaultSuffix
+		}
+		return strings.Join([]string{t.PkgPath(), refName}, ".")
+	}
+}
+
+func (m *refMapper) makeRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
+	name := makeName(refName, t, "")
+	m.makeRefs[name] = sp
+	return "#/components/schemas/" + name
 }
 
 // Model provides DSL methods for creating OpenAPI schema objects based on Go
@@ -115,10 +129,22 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaPro
 			if fDescription != "" {
 				fSchema.Schema().Description = fDescription
 			}
-		}
 
-		if refName := info.RefName(); refName != "" {
-			makeRefs.makeRef(refName, fSchema)
+			if fType.Kind() == reflect.Slice || fType.Kind() == reflect.Array {
+				if elemRefName := info.ElemRefName(); elemRefName != "" {
+					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fSchema)
+					itemSchema := base.CreateSchemaProxyRef(elemRef)
+					fSchema = base.CreateSchemaProxy(&base.Schema{
+						Type:  []string{"array"},
+						Items: &base.DynamicValue[*base.SchemaProxy, bool]{N: 0, A: itemSchema},
+					})
+				}
+			}
+
+			if refName := info.RefName(); refName != "" {
+				ref := makeRefs.makeRef(refName, fType, fSchema)
+				fSchema = base.CreateSchemaProxyRef(ref)
+			}
 		}
 
 		// TODO This would be super cool to implement.
