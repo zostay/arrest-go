@@ -118,6 +118,19 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaPro
 				Description: fDescription,
 				Type:        []string{fReplaceType},
 			})
+		} else if f.Anonymous {
+			anonSchema, err := makeSchemaProxy(fType, makeRefs)
+			if err != nil {
+				return base.CreateSchemaProxy(&base.Schema{
+					Type: []string{"any"},
+				}), err
+			}
+
+			for k, v := range anonSchema.Schema().Properties.FromOldest() {
+				fieldProps.Set(k, v)
+			}
+
+			continue
 		} else {
 			var err error
 			fSchema, err = makeSchemaProxy(fType, makeRefs)
