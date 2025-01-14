@@ -146,7 +146,14 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaPro
 
 			if fType.Kind() == reflect.Slice || fType.Kind() == reflect.Array {
 				if elemRefName := info.ElemRefName(); elemRefName != "" {
-					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fSchema)
+					fElemSchema, err := makeSchemaProxy(fType.Elem(), makeRefs)
+					if err != nil {
+						return base.CreateSchemaProxy(&base.Schema{
+							Type: []string{"any"},
+						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+					}
+
+					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fElemSchema)
 					itemSchema := base.CreateSchemaProxyRef(elemRef)
 					fSchema = base.CreateSchemaProxy(&base.Schema{
 						Type:  []string{"array"},
