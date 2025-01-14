@@ -234,6 +234,12 @@ func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy,
 func makeSchemaProxy(t reflect.Type, makeRefs *refMapper) (*base.SchemaProxy, error) {
 	switch t.Kind() {
 	case reflect.Struct:
+		if t.Name() == "Time" && t.PkgPath() == "time" {
+			return base.CreateSchemaProxy(&base.Schema{
+				Type:   []string{"string"},
+				Format: "date-time",
+			}), nil
+		}
 		return makeSchemaProxyStruct(t, makeRefs)
 	case reflect.Slice, reflect.Array:
 		return makeSchemaProxySlice(t, makeRefs)
