@@ -107,7 +107,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaPro
 
 		fDescription := ""
 		if fieldDocs != nil {
-			fDescription = fieldDocs[f.Name]
+			fDescription = fieldDocs[fName]
 		}
 
 		fReplaceType := info.ReplacementType()

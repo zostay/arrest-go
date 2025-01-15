@@ -85,6 +85,8 @@ func parametersFromFunc(t reflect.Type) *Parameters {
 }
 
 func parametersFromStruct(t reflect.Type) *Parameters {
+	_, fieldDocs, _ := GoDocForStruct(t)
+
 	ps := &Parameters{
 		Parameters: make([]*Parameter, 0, t.NumField()),
 	}
@@ -97,13 +99,29 @@ func parametersFromStruct(t reflect.Type) *Parameters {
 			continue
 		}
 
-		in := "query"
+		fIn := "query"
 		if info.HasIn() {
-			in = info.In()
+			fIn = info.In()
 		}
 
-		p := ParameterFromReflect(f.Type)
-		p.In(in)
+		fName := f.Name
+		if info.HasName() {
+			fName = info.Name()
+		}
+
+		fDescription := ""
+		if fieldDocs != nil {
+			fDescription = fieldDocs[fName]
+		}
+
+		p := ParameterFromReflect(f.Type).
+			Name(fName).
+			In(fIn).
+			Description(fDescription)
+
+		if fIn == "path" {
+			p = p.Required()
+		}
 
 		ps.AddHandler(p)
 		ps.Parameters = append(ps.Parameters, p)
