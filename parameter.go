@@ -54,10 +54,17 @@ func ParametersFromReflect(t reflect.Type) *Parameters {
 		t = t.Elem()
 	}
 
-	if t.Kind() != reflect.Func {
+	switch t.Kind() {
+	case reflect.Func:
+		return parametersFromFunc(t)
+	case reflect.Struct:
+		return parametersFromStruct(t)
+	default:
 		return withErr(&Parameters{}, ErrUnsupportedParameterType)
 	}
+}
 
+func parametersFromFunc(t reflect.Type) *Parameters {
 	ps := &Parameters{
 		Parameters: make([]*Parameter, 0, t.NumIn()),
 	}
@@ -69,6 +76,34 @@ func ParametersFromReflect(t reflect.Type) *Parameters {
 		}
 
 		p := ParameterFromReflect(t.In(i))
+
+		ps.AddHandler(p)
+		ps.Parameters = append(ps.Parameters, p)
+	}
+
+	return ps
+}
+
+func parametersFromStruct(t reflect.Type) *Parameters {
+	ps := &Parameters{
+		Parameters: make([]*Parameter, 0, t.NumField()),
+	}
+
+	for i := range t.NumField() {
+		f := t.Field(i)
+
+		info := NewTagInfo(f.Tag)
+		if info.IsIgnored() {
+			continue
+		}
+
+		in := "query"
+		if info.HasIn() {
+			in = info.In()
+		}
+
+		p := ParameterFromReflect(f.Type)
+		p.In(in)
 
 		ps.AddHandler(p)
 		ps.Parameters = append(ps.Parameters, p)

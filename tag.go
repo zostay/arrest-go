@@ -111,3 +111,11 @@ func (info *TagInfo) RefName() string {
 func (info *TagInfo) ElemRefName() string {
 	return info.Props()["elemRefName"]
 }
+
+func (info *TagInfo) HasIn() bool {
+	return info.Props()["in"] != ""
+}
+
+func (into *TagInfo) In() string {
+	return into.Props()["in"]
+}
