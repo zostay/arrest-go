@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/doc"
 	"reflect"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -102,7 +103,17 @@ func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 					openApiKey = info.Name()
 				}
 
-				fields[openApiKey] = docField.Comment
+				// Rewrite commend to use the openapi name rather than the go name
+				ps := strings.SplitN(docField.Comment, " ", 2)
+				newComment := docField.Comment
+				if len(ps) == 2 {
+					firstWord, theRest := ps[0], ps[1]
+					if firstWord == key {
+						newComment = strings.Join([]string{openApiKey, theRest}, " ")
+					}
+				}
+
+				fields[openApiKey] = newComment
 			}
 
 			return comment, fields, nil
