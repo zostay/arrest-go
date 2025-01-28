@@ -97,7 +97,9 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper) (*base.SchemaPro
 		fType := f.Type
 
 		info := NewTagInfo(f.Tag)
-		if info.IsIgnored() {
+		if info.IsIgnored() || info.HasIn() {
+			// either they are ignored or they are parameters that belong to the
+			// path, query, headers, etc. (not here)
 			continue
 		}
 
