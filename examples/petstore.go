@@ -36,6 +36,10 @@ func ShowByPetID(petID string) (*Pet, error) {
 }
 
 func main() {
+	fmt.Print(BuildDoc())
+}
+
+func BuildDoc() string {
 	doc, err := arrest.NewDocument("Swagger Petstore")
 	if err != nil {
 		panic(err)
@@ -105,5 +109,5 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Print(string(rend))
+	return string(rend)
 }
