@@ -161,12 +161,12 @@ func (s *SecurityScheme) BearerFormat(format string) *SecurityScheme {
 	return s
 }
 
-type regardingFlow struct {
+type RegardingFlow struct {
 	securityScheme *SecurityScheme
 	flow           []*highv3.OAuthFlow
 }
 
-func (s *SecurityScheme) ImplicitFlow() *regardingFlow {
+func (s *SecurityScheme) ImplicitFlow() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -175,13 +175,13 @@ func (s *SecurityScheme) ImplicitFlow() *regardingFlow {
 		s.SecurityScheme.Flows.Implicit = &highv3.OAuthFlow{}
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow:           []*highv3.OAuthFlow{s.SecurityScheme.Flows.Implicit},
 	}
 }
 
-func (s *SecurityScheme) AuthorizationCodeFlow() *regardingFlow {
+func (s *SecurityScheme) AuthorizationCodeFlow() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -190,13 +190,13 @@ func (s *SecurityScheme) AuthorizationCodeFlow() *regardingFlow {
 		s.SecurityScheme.Flows.AuthorizationCode = &highv3.OAuthFlow{}
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow:           []*highv3.OAuthFlow{s.SecurityScheme.Flows.AuthorizationCode},
 	}
 }
 
-func (s *SecurityScheme) PasswordFlow() *regardingFlow {
+func (s *SecurityScheme) PasswordFlow() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -205,13 +205,13 @@ func (s *SecurityScheme) PasswordFlow() *regardingFlow {
 		s.SecurityScheme.Flows.Password = &highv3.OAuthFlow{}
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow:           []*highv3.OAuthFlow{s.SecurityScheme.Flows.Password},
 	}
 }
 
-func (s *SecurityScheme) ClientCredentialsFlow() *regardingFlow {
+func (s *SecurityScheme) ClientCredentialsFlow() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -220,13 +220,13 @@ func (s *SecurityScheme) ClientCredentialsFlow() *regardingFlow {
 		s.SecurityScheme.Flows.ClientCredentials = &highv3.OAuthFlow{}
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow:           []*highv3.OAuthFlow{s.SecurityScheme.Flows.ClientCredentials},
 	}
 }
 
-func (s *SecurityScheme) AllFlows() *regardingFlow {
+func (s *SecurityScheme) AllFlows() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -247,7 +247,7 @@ func (s *SecurityScheme) AllFlows() *regardingFlow {
 		s.SecurityScheme.Flows.ClientCredentials = &highv3.OAuthFlow{}
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow: []*highv3.OAuthFlow{
 			s.SecurityScheme.Flows.Implicit,
@@ -258,7 +258,7 @@ func (s *SecurityScheme) AllFlows() *regardingFlow {
 	}
 }
 
-func (s *SecurityScheme) AllDefinedFlows() *regardingFlow {
+func (s *SecurityScheme) AllDefinedFlows() *RegardingFlow {
 	if s.SecurityScheme.Flows == nil {
 		s.SecurityScheme.Flows = &highv3.OAuthFlows{}
 	}
@@ -277,13 +277,13 @@ func (s *SecurityScheme) AllDefinedFlows() *regardingFlow {
 		flows = append(flows, s.SecurityScheme.Flows.ClientCredentials)
 	}
 
-	return &regardingFlow{
+	return &RegardingFlow{
 		securityScheme: s,
 		flow:           flows,
 	}
 }
 
-func (f *regardingFlow) AddScope(name, description string) *regardingFlow {
+func (f *RegardingFlow) AddScope(name, description string) *RegardingFlow {
 	for _, flow := range f.flow {
 		if flow.Scopes == nil {
 			flow.Scopes = orderedmap.New[string, string]()
@@ -293,28 +293,28 @@ func (f *regardingFlow) AddScope(name, description string) *regardingFlow {
 	return f
 }
 
-func (f *regardingFlow) AuthorizationURL(url string) *regardingFlow {
+func (f *RegardingFlow) AuthorizationURL(url string) *RegardingFlow {
 	for _, flow := range f.flow {
 		flow.AuthorizationUrl = url
 	}
 	return f
 }
 
-func (f *regardingFlow) TokenURL(url string) *regardingFlow {
+func (f *RegardingFlow) TokenURL(url string) *RegardingFlow {
 	for _, flow := range f.flow {
 		flow.TokenUrl = url
 	}
 	return f
 }
 
-func (f *regardingFlow) RefreshURL(url string) *regardingFlow {
+func (f *RegardingFlow) RefreshURL(url string) *RegardingFlow {
 	for _, flow := range f.flow {
 		flow.RefreshUrl = url
 	}
 	return f
 }
 
-func (f *regardingFlow) AddExtension(name string, value *yaml.Node) *regardingFlow {
+func (f *RegardingFlow) AddExtension(name string, value *yaml.Node) *RegardingFlow {
 	for _, flow := range f.flow {
 		if flow.Extensions == nil {
 			flow.Extensions = orderedmap.New[string, *yaml.Node]()

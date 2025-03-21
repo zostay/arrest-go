@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,10 +138,11 @@ paths:
 `
 
 func TestBuildDoc(t *testing.T) {
-	var got string
-	require.NotPanics(t, func() {
-		got = BuildDocString()
-	})
+	e := gin.Default()
+	doc, err := BuildDoc(e)
+	require.NoError(t, err)
 
-	assert.YAMLEq(t, expected, got)
+	got, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+	assert.YAMLEq(t, expected, string(got))
 }

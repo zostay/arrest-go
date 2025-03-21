@@ -127,8 +127,6 @@ github.com/vmware-labs/yaml-jsonpath v0.3.2/go.mod h1:U6whw1z03QyqgWdgXxvVnQ90zN
 github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd h1:dLuIF2kX9c+KknGJUdJi1Il1SDiTSK158/BB9kdgAew=
 github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd/go.mod h1:DbzwytT4g/odXquuOCqroKvtxxldI4nb3nuesHF/Exo=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
-github.com/zostay/arrest-go v0.0.0-20241106223450-9d43dc338b24 h1:EMp7A5q6kMS9yVlvl2XMUTrmEJa9Hys/85xWNb6b+PU=
-github.com/zostay/arrest-go v0.0.0-20241106223450-9d43dc338b24/go.mod h1:ozGN4e6OteInh1a3rHgt2NFr3NTjCb3cUk5+YZWcAi0=
 github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658 h1:OSjWoaDlaxKUYjWzjmG/FAPRCdxRcKGGtHsyhMa6lq8=
 github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658/go.mod h1:lgwUYF68jF73om1GbTv/b/p/BNKPoSsenCcGjX13iqE=
 github.com/zostay/go-std v0.8.0 h1:OR9h8eGkEBSCn5TsYjtb4gC/A8V2jndgdV9iI0KwWFo=
