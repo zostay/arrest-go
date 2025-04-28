@@ -400,3 +400,21 @@ func TestDocument(t *testing.T) {
 	assert.NotEmpty(t, rend)
 	assert.Equal(t, expect, string(rend))
 }
+
+func TestDocumentSkipDocumentation(t *testing.T) {
+	t.Parallel()
+
+	arrest.SkipDocumentation = true
+
+	doc, err := arrest.NewDocument("")
+	require.NotNil(t, doc)
+	require.NoError(t, err)
+
+	err = OpenAPI(doc)
+	assert.NoError(t, err)
+
+	rend, err := doc.OpenAPI.Render()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, rend)
+	assert.Equal(t, expect, string(rend))
+}
