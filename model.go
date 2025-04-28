@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // SkipDocumentation is a global that can be set to true to skip generating
@@ -20,6 +21,12 @@ var SkipDocumentation = false
 
 // ErrUnsupportedModelType is returned when the model type is not supported.
 var ErrUnsupportedModelType = errors.New("unsupported model type")
+
+type Enumeration struct {
+	Const       any    `yaml:"const"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
+}
 
 type refMapper struct {
 	makeRefs map[string]*base.SchemaProxy
@@ -60,6 +67,38 @@ type Model struct {
 	makeRefs map[string]*base.SchemaProxy
 
 	ErrHelper
+}
+
+// AnyOf associates a list of enumerations with the model.
+func (m *Model) AnyOf(enums ...Enumeration) *Model {
+	m.SchemaProxy.Schema().AnyOf = make([]*base.SchemaProxy, len(enums))
+	for i, enum := range enums {
+		m.SchemaProxy.Schema().AnyOf[i] = base.CreateSchemaProxy(&base.Schema{
+			Title: enum.Title,
+			Const: &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: fmt.Sprintf("%v", enum.Const),
+			},
+			Description: enum.Description,
+		})
+	}
+	return m
+}
+
+// OneOf associates a list of enumerations with the model.
+func (m *Model) OneOf(enums ...Enumeration) *Model {
+	m.SchemaProxy.Schema().OneOf = make([]*base.SchemaProxy, len(enums))
+	for i, enum := range enums {
+		m.SchemaProxy.Schema().OneOf[i] = base.CreateSchemaProxy(&base.Schema{
+			Title: enum.Title,
+			Const: &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: fmt.Sprintf("%v", enum.Const),
+			},
+			Description: enum.Description,
+		})
+	}
+	return m
 }
 
 func MappedName(typName string, pkgMap []PackageMap) string {
