@@ -27,7 +27,7 @@ func (r *Response) Header(name string, m *Model, mods ...func(h *Header)) *Respo
 	hdr := &v3.Header{}
 	r.Response.Headers.Set(name, hdr)
 
-	m.AddHandler(m)
+	m.AddHandler(r)
 	hdr.Schema = m.SchemaProxy
 
 	if len(mods) > 0 {
@@ -46,7 +46,18 @@ func (r *Response) Content(code string, m *Model) *Response {
 		r.Response.Content = orderedmap.New[string, *v3.MediaType]()
 	}
 
-	m.AddHandler(m)
+	m.AddHandler(r)
 	r.Response.Content.Set(code, &v3.MediaType{Schema: m.SchemaProxy})
+	return r
+}
+
+// ContentMediaType is used to specify when the response is a raw binary type.
+func (r *Response) ContentMediaType(mediaType string) *Response {
+	if r.Response.Content == nil {
+		r.Response.Content = orderedmap.New[string, *v3.MediaType]()
+	}
+
+	r.Response.Content.Set(mediaType, &v3.MediaType{})
+
 	return r
 }

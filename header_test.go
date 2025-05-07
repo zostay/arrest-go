@@ -8,7 +8,7 @@ import (
 	"github.com/zostay/arrest-go"
 )
 
-const expectedDoc = `
+const headerTestExpectedDoc = `
 openapi: 3.1.0
 info:
   title: Header Test
@@ -43,5 +43,5 @@ func TestHeader(t *testing.T) {
 
 	out, err := doc.OpenAPI.Render()
 	require.NoError(t, err)
-	assert.YAMLEq(t, expectedDoc, string(out))
+	assert.YAMLEq(t, headerTestExpectedDoc, string(out))
 }
