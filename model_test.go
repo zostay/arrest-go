@@ -192,6 +192,7 @@ paths:
     get:
       responses:
         '200':
+          description: the recursive struct is a recursive struct
           content:
             application/json:
               schema:
@@ -233,7 +234,8 @@ func TestModelFrom_RecursiveStruct(t *testing.T) {
 
 	doc.Get("/recursive").
 		Response("200", func(r *arrest.Response) {
-			r.Content("application/json", resRef)
+			r.Content("application/json", resRef).
+				Description("the recursive struct is a recursive struct")
 		})
 
 	assert.NoError(t, doc.Err())
@@ -255,6 +257,7 @@ paths:
     get:
       responses:
         '200':
+          description: the recursive struct is a recursive struct
           content:
             application/json:
               schema:
@@ -299,7 +302,8 @@ func TestModelFrom_DeeperRecursiveStruct(t *testing.T) {
 
 	doc.Get("/recursive").
 		Response("200", func(r *arrest.Response) {
-			r.Content("application/json", resRef)
+			r.Content("application/json", resRef).
+				Description("the recursive struct is a recursive struct")
 		})
 
 	assert.NoError(t, doc.Err())
