@@ -247,6 +247,13 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 		}
 
 		return nil
+	} else if slices.Contains(sp.Schema().Type, "object") && sp.Schema().AdditionalProperties != nil && sp.Schema().AdditionalProperties.IsA() {
+		newSp := remapSchemaRefs(ctx, sp.Schema().AdditionalProperties.A, pkgMap)
+		if newSp != nil {
+			sp.Schema().AdditionalProperties.A = newSp
+		}
+
+		return nil
 	}
 
 	return nil
@@ -274,8 +281,16 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 		c.Schemas.Set(childFqn, sp)
 	}
 
+	// Remap schema references in the main schema
 	if slices.Contains(m.SchemaProxy.Schema().Type, "object") {
 		remapSchemaRefs(context.TODO(), m.SchemaProxy, d.PkgMap)
+	}
+
+	// Also remap schema references in all child schemas
+	for _, sp := range m.ExtractChildRefs() {
+		if slices.Contains(sp.Schema().Type, "object") {
+			remapSchemaRefs(context.TODO(), sp, d.PkgMap)
+		}
 	}
 
 	return d

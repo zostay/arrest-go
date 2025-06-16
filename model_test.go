@@ -247,6 +247,72 @@ func TestModelFrom_RecursiveStruct(t *testing.T) {
 	//assert.Equal(t, expected_RecursiveStruct, string(oas))
 }
 
+const expected_DeeperRecursiveStruct = `openapi: 3.1.0
+info:
+  title: test-deeper-recursive
+paths:
+  /recursive:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/zostay.test.DeeperRecursiveStruct'
+components:
+  schemas:
+    zostay.test.DeeperRecursiveStruct:
+      type: object
+      properties:
+        recursive:
+          $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+    zostay.test.RecursiveStruct:
+      type: object
+      properties:
+        name:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+        parent:
+          $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+`
+
+type DeeperRecursiveStruct struct {
+	Recursive RecursiveStruct `json:"recursive" openapi:"recursive,refName=RecursiveStruct"`
+}
+
+func TestModelFrom_DeeperRecursiveStruct(t *testing.T) {
+	t.Parallel()
+
+	// Verify we can create a document with this recursive model
+	doc, err := arrest.NewDocument("test-deeper-recursive")
+	require.NoError(t, err)
+
+	doc.PackageMap(
+		"zostay.test", "github.com/zostay/arrest-go_test",
+	)
+
+	// This test ensures that recursive structs don't cause infinite recursion
+	resRef := doc.SchemaComponentRef(arrest.ModelFrom[DeeperRecursiveStruct]()).Ref()
+
+	doc.Get("/recursive").
+		Response("200", func(r *arrest.Response) {
+			r.Content("application/json", resRef)
+		})
+
+	assert.NoError(t, doc.Err())
+
+	// Should be able to render without hanging
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+	assert.NotEmpty(t, oas)
+
+	assert.YAMLEq(t, expected_DeeperRecursiveStruct, string(oas))
+	//assert.Equal(t, expected_DeeperRecursiveStruct, string(oas))
+}
+
 type DeepRecursiveStruct struct {
 	ID       int                             `json:"id"`
 	Name     string                          `json:"name"`
