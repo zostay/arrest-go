@@ -119,3 +119,5 @@ func (info *TagInfo) HasIn() bool {
 func (into *TagInfo) In() string {
 	return into.Props()["in"]
 }
+
+func (info *TagInfo) Recursive() bool { return info.Props()["recursive"] == "true" }
