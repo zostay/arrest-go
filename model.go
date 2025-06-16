@@ -30,11 +30,13 @@ type Enumeration struct {
 
 type refMapper struct {
 	makeRefs map[string]*base.SchemaProxy
+	inProcess map[reflect.Type]bool
 }
 
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
 		makeRefs: make(map[string]*base.SchemaProxy),
+		inProcess: make(map[reflect.Type]bool),
 	}
 }
 
@@ -284,58 +286,97 @@ func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*bas
 }
 
 func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	// Check if this type is currently being processed to prevent infinite recursion
+	if makeRefs.inProcess[t] {
+		// Create a reference for this recursive type
+		name := makeName("", t, "")
+		ref := "#/components/schemas/" + name
+		return base.CreateSchemaProxyRef(ref), nil
+	}
+
+	// Mark this type as being processed
+	makeRefs.inProcess[t] = true
+	defer func() {
+		delete(makeRefs.inProcess, t)
+	}()
+
+	// For struct types that might be recursive, we need to pre-register them
+	// This ensures that if we encounter a recursive reference, the schema will be available
+	var shouldRegister bool
+	actualType := t
+	for actualType.Kind() == reflect.Ptr {
+		actualType = actualType.Elem()
+	}
+	if actualType.Kind() == reflect.Struct && actualType.Name() != "" && actualType.Name() != "Time" {
+		shouldRegister = true
+	}
+
+	// Create the schema
+	var schema *base.SchemaProxy
+	var err error
+
 	switch t.Kind() {
 	case reflect.Struct:
 		if t.Name() == "Time" && t.PkgPath() == "time" {
-			return base.CreateSchemaProxy(&base.Schema{
+			schema = base.CreateSchemaProxy(&base.Schema{
 				Type:   []string{"string"},
 				Format: "date-time",
-			}), nil
+			})
+		} else {
+			schema, err = makeSchemaProxyStruct(t, makeRefs, skipDoc)
 		}
-		return makeSchemaProxyStruct(t, makeRefs, skipDoc)
 	case reflect.Slice, reflect.Array:
-		return makeSchemaProxySlice(t, makeRefs, skipDoc)
+		schema, err = makeSchemaProxySlice(t, makeRefs, skipDoc)
 	case reflect.Map:
-		return makeSchemaProxyMap(t, makeRefs, skipDoc)
+		schema, err = makeSchemaProxyMap(t, makeRefs, skipDoc)
 	case reflect.Ptr:
-		return makeSchemaProxy(t.Elem(), makeRefs, skipDoc)
+		schema, err = makeSchemaProxy(t.Elem(), makeRefs, skipDoc)
 	case reflect.Bool:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"boolean"},
-		}), nil
+		})
 	case reflect.String:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"string"},
-		}), nil
+		})
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type:   []string{"integer"},
 			Format: "int32",
-		}), nil
+		})
 	case reflect.Int64:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type:   []string{"integer"},
 			Format: "int64",
-		}), nil
+		})
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"integer"},
-		}), nil
+		})
 	case reflect.Float32:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type:   []string{"number"},
 			Format: "float",
-		}), nil
+		})
 	case reflect.Float64:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type:   []string{"number"},
 			Format: "double",
-		}), nil
+		})
 	default:
-		return base.CreateSchemaProxy(&base.Schema{
+		schema = base.CreateSchemaProxy(&base.Schema{
 			Type: []string{"any"},
-		}), ErrUnsupportedModelType
+		})
+		err = ErrUnsupportedModelType
 	}
+
+	// If this is a named struct type that could be recursive, register it in makeRefs
+	if shouldRegister && schema != nil && err == nil {
+		name := makeName("", t, "")
+		makeRefs.makeRefs[name] = schema
+	}
+
+	return schema, err
 }
 
 // ModelFromReflect creates a new Model from a reflect.Type.
