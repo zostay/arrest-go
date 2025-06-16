@@ -55,6 +55,18 @@ func makeName(refName string, t reflect.Type, defaultSuffix string) string {
 func (m *refMapper) makeRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
 	name := makeName(refName, t, "")
 	m.makeRefs[name] = sp
+	return makeRefName(name)
+}
+
+// refNameFromType is useful when creating a fully qualified name for a type,
+// but is not able to register it in a refMapper. This is useful for creating
+// recursive references and possibly in other situations.
+func refNameFromType(refName string, t reflect.Type) string {
+	name := makeName(refName, t, "")
+	return makeRefName(name)
+}
+
+func makeRefName(name string) string {
 	return "#/components/schemas/" + name
 }
 
@@ -198,19 +210,28 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 
 			if fType.Kind() == reflect.Slice || fType.Kind() == reflect.Array {
 				if elemRefName := info.ElemRefName(); elemRefName != "" {
-					fElemSchema, err := makeSchemaProxy(fType.Elem(), makeRefs, skipDoc)
-					if err != nil {
-						return base.CreateSchemaProxy(&base.Schema{
-							Type: []string{"any"},
-						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
-					}
+					if info.Recursive() {
+						elemRef := refNameFromType(elemRefName, fType.Elem())
+						itemSchema := base.CreateSchemaProxyRef(elemRef)
+						fSchema = base.CreateSchemaProxy(&base.Schema{
+							Type:  []string{"array"},
+							Items: &base.DynamicValue[*base.SchemaProxy, bool]{N: 0, A: itemSchema},
+						})
+					} else {
+						fElemSchema, err := makeSchemaProxy(fType.Elem(), makeRefs, skipDoc)
+						if err != nil {
+							return base.CreateSchemaProxy(&base.Schema{
+								Type: []string{"any"},
+							}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+						}
 
-					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fElemSchema)
-					itemSchema := base.CreateSchemaProxyRef(elemRef)
-					fSchema = base.CreateSchemaProxy(&base.Schema{
-						Type:  []string{"array"},
-						Items: &base.DynamicValue[*base.SchemaProxy, bool]{N: 0, A: itemSchema},
-					})
+						elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fElemSchema)
+						itemSchema := base.CreateSchemaProxyRef(elemRef)
+						fSchema = base.CreateSchemaProxy(&base.Schema{
+							Type:  []string{"array"},
+							Items: &base.DynamicValue[*base.SchemaProxy, bool]{N: 0, A: itemSchema},
+						})
+					}
 				}
 			}
 
