@@ -288,7 +288,7 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 
 	// Also remap schema references in all child schemas
 	for _, sp := range m.ExtractChildRefs() {
-		if slices.Contains(sp.Schema().Type, "object") {
+		if sp.Schema() != nil && slices.Contains(sp.Schema().Type, "object") {
 			remapSchemaRefs(context.TODO(), sp, d.PkgMap)
 		}
 	}
