@@ -65,11 +65,7 @@ func NewDocument(title string) (*Document, error) {
 		},
 	}
 
-	bs, err := doc.Render()
-	if err != nil {
-		return nil, err
-	}
-
+	bs := doc.RenderWithIndention(2)
 	return NewDocumentFromBytes(bs)
 }
 
