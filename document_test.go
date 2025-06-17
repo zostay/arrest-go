@@ -391,6 +391,7 @@ func TestDocument(t *testing.T) {
 	doc, err := arrest.NewDocument("")
 	require.NotNil(t, doc)
 	require.NoError(t, err)
+	require.NoError(t, doc.Err())
 
 	err = OpenAPI(doc)
 	assert.NoError(t, err)
@@ -409,6 +410,7 @@ func TestDocumentSkipDocumentation(t *testing.T) {
 	doc, err := arrest.NewDocument("")
 	require.NotNil(t, doc)
 	require.NoError(t, err)
+	require.NoError(t, doc.Err())
 
 	err = OpenAPI(doc)
 	assert.NoError(t, err)

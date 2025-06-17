@@ -263,6 +263,8 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 //
 // to reference this schema in other parts of the document.
 func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
+	d.AddHandler(m)
+
 	if d.DataModel.Model.Components == nil {
 		d.DataModel.Model.Components = &v3.Components{}
 	}
@@ -312,6 +314,8 @@ func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Docum
 }
 
 func (d *Document) SchemaComponentRef(m *Model) *SchemaComponent {
+	d.AddHandler(m)
+
 	fqn := m.MappedName(d.PkgMap)
 
 	d.SchemaComponent(fqn, m)
