@@ -227,6 +227,7 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 					))
 		}
 	} else if slices.Contains(sp.Schema().Type, "object") {
+		// Handle object properties
 		for pair := range orderedmap.Iterate(context.TODO(), sp.Schema().Properties) {
 			vsp := pair.Value()
 			newSp := remapSchemaRefs(ctx, vsp, pkgMap)
@@ -235,18 +236,19 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 			}
 		}
 
+		// Also handle additionalProperties for the same object
+		if sp.Schema().AdditionalProperties != nil && sp.Schema().AdditionalProperties.IsA() {
+			newSp := remapSchemaRefs(ctx, sp.Schema().AdditionalProperties.A, pkgMap)
+			if newSp != nil {
+				sp.Schema().AdditionalProperties.A = newSp
+			}
+		}
+
 		return nil
 	} else if slices.Contains(sp.Schema().Type, "array") && sp.Schema().Items.IsA() {
 		newSp := remapSchemaRefs(ctx, sp.Schema().Items.A, pkgMap)
 		if newSp != nil {
 			sp.Schema().Items.A = newSp
-		}
-
-		return nil
-	} else if slices.Contains(sp.Schema().Type, "object") && sp.Schema().AdditionalProperties != nil && sp.Schema().AdditionalProperties.IsA() {
-		newSp := remapSchemaRefs(ctx, sp.Schema().AdditionalProperties.A, pkgMap)
-		if newSp != nil {
-			sp.Schema().AdditionalProperties.A = newSp
 		}
 
 		return nil
@@ -284,7 +286,7 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 
 	// Also remap schema references in all child schemas
 	for _, sp := range m.ExtractChildRefs() {
-		if sp.Schema() != nil && slices.Contains(sp.Schema().Type, "object") {
+		if slices.Contains(sp.Schema().Type, "object") {
 			remapSchemaRefs(context.TODO(), sp, d.PkgMap)
 		}
 	}

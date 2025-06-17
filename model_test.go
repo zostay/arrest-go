@@ -339,3 +339,132 @@ func TestModelFrom_DeepRecursiveStruct(t *testing.T) {
 	refs := model.ExtractChildRefs()
 	assert.NotEmpty(t, refs, "Should have child references for deeply recursive types")
 }
+
+type Account struct {
+	Name     string              `json:"name"`
+	Parent   *Account            `json:"parent,omitempty" openapi:",refName=Account"`
+	Children map[string]*Account `json:"children,omitempty" openapi:",elemRefName=Account"`
+}
+
+type Commodity struct {
+	Name string `json:"name"`
+}
+
+type Line struct {
+	Description string     `json:"description"`
+	Commodity   *Commodity `json:"commodity" openapi:",refName=Commodity"`
+	Account     *Account   `json:"account,omitempty" openapi:",refName=Account"`
+}
+
+type Ledger struct {
+	Description string     `json:"description"`
+	Commodity   *Commodity `json:"commodity" openapi:",refName=Commodity"`
+	Lines       []*Line    `json:"lines,omitempty" openapi:",elemRefName=Line"`
+}
+
+type LedgerRequest struct {
+	Entry *Ledger `json:"entry,omitempty" openapi:",refName=Ledger"`
+}
+
+type LedgerResponse struct {
+	Entry []*Ledger `json:"entry,omitempty" openapi:",elemRefName=Ledger"`
+}
+
+const expected_LedgerRequest = `openapi: 3.1.0
+info:
+  title: Ledger Request
+paths:
+  /ledger:
+    get:
+      parameters:
+        - name: description
+          in: query
+          schema:
+            type: string
+          description: Filter by description (optional)
+      responses:
+        "200":
+          description: Ledger Request Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/zostay.test.LedgerResponse'
+components:
+  schemas:
+    zostay.test.LedgerResponse:
+      type: object
+      properties:
+        entry:
+          type: array
+          items:
+            $ref: '#/components/schemas/zostay.test.Ledger'
+    zostay.test.Ledger:
+      type: object
+      properties:
+        description:
+          type: string
+        commodity:
+          $ref: '#/components/schemas/zostay.test.Commodity'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/zostay.test.Line'
+    zostay.test.Line:
+      type: object
+      properties:
+        description:
+          type: string
+        commodity:
+          $ref: '#/components/schemas/zostay.test.Commodity'
+        account:
+          $ref: '#/components/schemas/zostay.test.Account'
+    zostay.test.Commodity:
+      type: object
+      properties:
+        name:
+          type: string
+    zostay.test.Account:
+      type: object
+      properties:
+        name:
+          type: string
+        parent:
+          $ref: '#/components/schemas/zostay.test.Account'
+        children:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/zostay.test.Account'
+`
+
+func TestModelFrom_Ledger(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("Ledger Request")
+	require.NoError(t, err)
+
+	doc.PackageMap(
+		"zostay.test", "github.com/zostay/arrest-go_test",
+	)
+
+	listAccounts := arrest.NParameters(1).
+		P(0, func(p *arrest.Parameter) {
+			p.Name("description").In("query").
+				Model(arrest.ModelFrom[string]()).
+				Description("Filter by description (optional)")
+		})
+
+	ledgerResRef := doc.SchemaComponentRef(arrest.ModelFrom[LedgerResponse]()).Ref()
+	doc.Get("/ledger").
+		Parameters(listAccounts).
+		Response("200", func(r *arrest.Response) {
+			r.Content("application/json", ledgerResRef).
+				Description("Ledger Request Response")
+		})
+	assert.NoError(t, doc.Err())
+
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, expected_LedgerRequest, string(oas))
+	//assert.Equal(t, expected_LedgerRequest, string(oas))
+}
