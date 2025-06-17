@@ -29,13 +29,13 @@ type Enumeration struct {
 }
 
 type refMapper struct {
-	makeRefs map[string]*base.SchemaProxy
+	makeRefs  map[string]*base.SchemaProxy
 	inProcess map[reflect.Type]bool
 }
 
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
-		makeRefs: make(map[string]*base.SchemaProxy),
+		makeRefs:  make(map[string]*base.SchemaProxy),
 		inProcess: make(map[reflect.Type]bool),
 	}
 }
@@ -362,6 +362,10 @@ func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.S
 		schema = base.CreateSchemaProxy(&base.Schema{
 			Type:   []string{"number"},
 			Format: "double",
+		})
+	case reflect.Interface:
+		schema = base.CreateSchemaProxy(&base.Schema{
+			Type: []string{"any"},
 		})
 	default:
 		schema = base.CreateSchemaProxy(&base.Schema{
