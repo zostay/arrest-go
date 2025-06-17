@@ -161,9 +161,36 @@ func (p *Parameter) Name(name string) *Parameter {
 	return p
 }
 
-// In sets the location of the parameter. Usually "query" or "path">
+// In sets the location of the parameter. Use this method when the In is not
+// one of the usual values like "query", "path", "header", or "cookie". In those
+// cases, you should prefer the InQuery(), InPath(), InHeader(), or InCookie()
+// methods instead.
 func (p *Parameter) In(in string) *Parameter {
 	p.Parameter.In = in
+	return p
+}
+
+// InQuery sets the location of the parameter to "query".
+func (p *Parameter) InQuery() *Parameter {
+	p.Parameter.In = "query"
+	return p
+}
+
+// InPath sets the location of the parameter to "path".
+func (p *Parameter) InPath() *Parameter {
+	p.Parameter.In = "path"
+	return p
+}
+
+// InHeader sets the location of the parameter to "header".
+func (p *Parameter) InHeader() *Parameter {
+	p.Parameter.In = "header"
+	return p
+}
+
+// InCookie sets the location of the parameter to "cookie".
+func (p *Parameter) InCookie() *Parameter {
+	p.Parameter.In = "cookie"
 	return p
 }
 
