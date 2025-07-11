@@ -6,6 +6,7 @@ import (
 	"go/doc"
 	"reflect"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -15,6 +16,11 @@ type fieldDoc struct {
 	Comment string
 	Tag     reflect.StructTag
 }
+
+var (
+	packageCache = make(map[string]*doc.Package)
+	cacheMutex   sync.RWMutex
+)
 
 func goDocForFields(spec ast.Spec) map[string]fieldDoc {
 	fieldComm := map[string]fieldDoc{}
@@ -48,13 +54,50 @@ func goDocForFields(spec ast.Spec) map[string]fieldDoc {
 	return fieldComm
 }
 
-func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
-	// NOTE: I implemented this in a hurry without really understanding what the
-	// hell I'm doing. To quote one of my son's favorite sayings, "Men learn
-	// mostly through trial and error, but mostly error." That's exactly what
-	// this is. It works for my purpose, but I definitely hacked this together
-	// out of spit and baling wire to get it to work.
+func getPackageDoc(pkgPath string) (*doc.Package, error) {
+	cacheMutex.RLock()
+	if cached, exists := packageCache[pkgPath]; exists {
+		cacheMutex.RUnlock()
+		return cached, nil
+	}
+	cacheMutex.RUnlock()
 
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if cached, exists := packageCache[pkgPath]; exists {
+		return cached, nil
+	}
+
+	pkgs, err := packages.Load(&packages.Config{
+		Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedFiles,
+	}, pkgPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(pkgs) == 0 {
+		packageCache[pkgPath] = nil
+		return nil, nil
+	}
+
+	pkg := pkgs[0]
+	if pkg.Fset == nil || pkg.Syntax == nil {
+		packageCache[pkgPath] = nil
+		return nil, nil
+	}
+
+	docPkg, err := doc.NewFromFiles(pkg.Fset, pkg.Syntax, pkgPath)
+	if err != nil {
+		return nil, err
+	}
+
+	packageCache[pkgPath] = docPkg
+	return docPkg, nil
+}
+
+func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 	if t.Kind() != reflect.Struct {
 		return "", nil, fmt.Errorf("expected a struct type, got %s", t.Kind())
 	}
@@ -63,25 +106,12 @@ func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 		return "", nil, nil
 	}
 
-	pkgs, err := packages.Load(&packages.Config{
-		Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedFiles,
-	}, t.PkgPath())
+	docPkg, err := getPackageDoc(t.PkgPath())
 	if err != nil {
 		return "", nil, err
 	}
-
-	if len(pkgs) == 0 {
+	if docPkg == nil {
 		return "", nil, nil
-	}
-
-	pkg := pkgs[0]
-	if pkg.Fset == nil || pkg.Syntax == nil {
-		return "", nil, nil
-	}
-
-	docPkg, err := doc.NewFromFiles(pkg.Fset, pkg.Syntax, t.PkgPath())
-	if err != nil {
-		return "", nil, err
 	}
 
 	for _, docType := range docPkg.Types {

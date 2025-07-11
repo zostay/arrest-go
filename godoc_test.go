@@ -16,8 +16,12 @@ func TestGoDocForStruct(t *testing.T) {
 	doc, flds, err := arrest.GoDocForStruct(reflect.TypeOf(test.DocStruct{}))
 	require.NoError(t, err)
 
-	require.Equal(t, "DocStruct is a structure with documentation.\n", doc)
-	require.Len(t, flds, 0)
+	assert.Equal(t, "DocStruct is a structure with documentation.\n", doc)
+
+	assert.Equal(t, map[string]string{
+		"Foo": "Foo is a field.\n",
+		"Bar": "Bar is also a field.\n",
+	}, flds)
 }
 
 func TestGoDocForStruct_SadNotAStruct(t *testing.T) {
@@ -25,4 +29,15 @@ func TestGoDocForStruct_SadNotAStruct(t *testing.T) {
 
 	_, _, err := arrest.GoDocForStruct(reflect.TypeOf(1))
 	assert.ErrorContains(t, err, "expected a struct type")
+}
+
+func BenchmarkGoDocForStruct(b *testing.B) {
+	b.ReportAllocs()
+	typeToTest := reflect.TypeOf(test.DocStruct{})
+	for i := 0; i < b.N; i++ {
+		_, _, err := arrest.GoDocForStruct(typeToTest)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
+	}
 }
