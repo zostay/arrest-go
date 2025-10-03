@@ -1,8 +1,31 @@
-# AR! Rest!
+# AR! Rest! OR... Arrest Go!
 
-The pirate-y OpenAPI 3.0 spec generator for Go. This is built on the very excellent libopenapi library from pb33f. Five out of five stars. Highly recommend. It can handle just about any kind of weird, fancy, or crazy OpenAPI doc you want to write, but it's also like programming your VCR. That's a dated references, but the retro styling of his website suggests.
+The pirate-y and/or crime serial themed OpenAPI 3.1 spec generator for Go. This is built on the very excellent libopenapi library from pb33f. Five out of five stars. Highly recommend. It can handle just about any kind of weird, fancy, or crazy OpenAPI doc you want to write, but it's also like programming your VCR. That's a dated references, but the retro styling of his website suggests.
 
-Anyway, this provides a DSL for generating OpenAPI 3.0 specs in Go. That, by itself, is probably not very interesting, but it does help infer your schemas from Go functions and Go types, which can greatly simplify things. Consider the ubiquitous Petstore example, here using the ARRest DSL:
+# Why?
+
+Honestly, the state of OpenAPI generation in Go is not that great, so while
+there's a vacuum in support for OpenAPI 3.1, I thought I'd give it a try. On the
+other hand, OpenAPI 3.1 library support is fantastic because pb33f and quobix
+and friends are pretty much the best. This is built on top of his library and I
+highly recommend all of their applications and libraries, so three cheers to
+Dave and his misfit engineers.
+
+The general goal here is for something that:
+
+* Works!
+* Outputs modern OpenAPI 3.1
+* Doesn't require some external gateway... seriously, why is this a thing?
+* Creates the server shims automatically (well, only partially so far)
+* Allows you to reuse your Go types for schemas and method definitions
+
+I would also like it to be easy to use and flexible enough to handle just about
+anything. It is being used in production for a couple projects and will,
+therefore, follow standard Go semver handling for backwards compatibility.
+
+# An Example
+
+Anyway, this provides a DSL for generating OpenAPI 3.1 specs in Go. That, by itself, is probably not very interesting, but it does help infer your schemas from Go functions and Go types, which can greatly simplify things. Consider the ubiquitous Petstore example, here using the ARRest DSL:
 
 ```go
 package main
@@ -171,19 +194,6 @@ if doc.Err() != nil {
 ```shell
 go get github.com/zostay/arrest-go
 ```
-
-# Design Note
-
-This library is being deliberately design in such a way as to be replaced with a
-second version later. Some of the issues are complicated and I want a bad
-implementation that gets me started so I can explore issues and then work my
-way toward a better solution.
-
-For example, I would like the `./gin` package to perform code generation of the
-handlers to build REST APIs that resemble regular Go code. But to get there I
-need to have a good handle on how I want those handlers to look like before I
-can start building those templates. In the meantime, the package merely provides
-some helps toward integrating with the Gin framework.
 
 # Special Thanks
 
