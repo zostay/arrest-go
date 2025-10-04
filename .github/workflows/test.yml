@@ -39,7 +39,7 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v8
       with:
-        version: 2.5.0
+        version: v2.5.0
 
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
@@ -81,7 +81,7 @@ jobs:
     - name: Run golangci-lint (gin)
       uses: golangci/golangci-lint-action@v8
       with:
-        version: 2.5.0
+        version: v2.5.0
 
     - name: Run tests (gin)
       working-directory: gin
