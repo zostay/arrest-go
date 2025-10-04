@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/pb33f/libopenapi v0.22.3
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/zostay/go-std v0.8.0
 	golang.org/x/tools v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
