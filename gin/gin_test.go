@@ -64,6 +64,10 @@ func UpdatePet(ctx context.Context, req UpdatePetRequest) (Pet, error) {
 	}, nil
 }
 
+func init() {
+	gin.SetMode(gin.TestMode)
+}
+
 func TestCallMethod_ValidController(t *testing.T) {
 	t.Parallel()
 
@@ -71,7 +75,6 @@ func TestCallMethod_ValidController(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -100,7 +103,6 @@ func TestCallMethod_GetRequest(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -126,7 +128,6 @@ func TestCallMethod_WithOptions(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -151,7 +152,6 @@ func TestCallMethod_InvalidController(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -168,7 +168,6 @@ func TestCallMethod_WrongSignature(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -186,7 +185,6 @@ func TestGeneratedHandler_POST(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -225,7 +223,6 @@ func TestGeneratedHandler_GET(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -258,7 +255,6 @@ func TestGeneratedHandler_PUT(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -298,7 +294,6 @@ func TestGeneratedHandler_ValidationError(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -336,7 +331,6 @@ func TestGeneratedHandler_ControllerError(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -374,7 +368,6 @@ func TestGeneratedHandler_PanicProtection(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
@@ -407,7 +400,6 @@ func TestValidateControllerSignature(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	op := &Operation{
 		Operation: *arrestDoc.Get("/test"),
@@ -473,7 +465,6 @@ func TestParameterGeneration(t *testing.T) {
 	arrestDoc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
-	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	doc := NewDocument(arrestDoc, router)
 
