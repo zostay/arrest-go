@@ -2,10 +2,13 @@
 package gin
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/zostay/arrest-go"
 )
 
@@ -104,4 +107,85 @@ func (o *Operation) Handler(handler gin.HandlerFunc) *Operation {
 func (o *Operation) StaticFile(file string) *Operation {
 	o.r.StaticFile(o.patternString(), file)
 	return o
+}
+
+// Summary sets the summary for the operation and returns the gin Operation for chaining.
+func (o *Operation) Summary(summary string) *Operation {
+	o.Operation.Summary(summary)
+	return o
+}
+
+// Description sets the description for the operation and returns the gin Operation for chaining.
+func (o *Operation) Description(description string) *Operation {
+	o.Operation.Description(description)
+	return o
+}
+
+// OperationID sets the operation ID for the operation and returns the gin Operation for chaining.
+func (o *Operation) OperationID(operationID string) *Operation {
+	o.Operation.OperationID(operationID)
+	return o
+}
+
+// Tags sets the tags for the operation and returns the gin Operation for chaining.
+func (o *Operation) Tags(tags ...string) *Operation {
+	o.Operation.Tags(tags...)
+	return o
+}
+
+// Call automatically generates a handler for the given controller function.
+// The controller must have the signature: func(ctx context.Context, input T) (output U, error)
+// where T is the input type and U is the output type.
+func (o *Operation) Call(controller interface{}, opts ...CallOption) *Operation {
+	// Apply options
+	options := &callOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Validate controller function signature
+	controllerType := reflect.TypeOf(controller)
+	if err := o.validateControllerSignature(controllerType); err != nil {
+		return withErr(o, fmt.Errorf("invalid controller signature: %w", err))
+	}
+
+	// Extract input and output types
+	inputType := controllerType.In(1)   // Second parameter (first is context.Context)
+	outputType := controllerType.Out(0) // First return value (second is error)
+
+	// Configure the operation with inferred schemas
+	if err := o.configureOperationSchemas(inputType, outputType, options); err != nil {
+		return withErr(o, fmt.Errorf("failed to configure operation schemas: %w", err))
+	}
+
+	// Generate and register the handler
+	handler := o.generateHandler(controller, inputType, outputType, options)
+	o.r.Match([]string{o.method}, o.patternString(), handler)
+
+	return o
+}
+
+// CallOption configures behavior for the Call method.
+type CallOption func(*callOptions)
+
+// callOptions holds configuration for the Call method.
+type callOptions struct {
+	errorModels     []*arrest.Model
+	panicProtection bool
+}
+
+// WithCallErrorModel adds a custom error model to the operation.
+// Multiple models will be combined using arrest.OneOf().
+func WithCallErrorModel(errModel *arrest.Model) CallOption {
+	return func(o *callOptions) {
+		o.errorModels = append(o.errorModels, errModel)
+	}
+}
+
+// WithPanicProtection enables panic protection in the generated handler.
+// When enabled, panics are caught and converted to 500 errors instead of crashing.
+func WithPanicProtection() CallOption {
+	return func(o *callOptions) {
+		o.panicProtection = true
+	}
 }

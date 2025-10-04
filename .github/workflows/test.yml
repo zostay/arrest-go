@@ -1,0 +1,93 @@
+name: Test & Lint
+
+on:
+  push:
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  # Test and lint the main project
+  test-main:
+    name: Test Main Package
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-main-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-main-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Verify go.mod and go.sum
+      run: go mod verify
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.5.0
+
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Check test coverage
+      run: go tool cover -func=coverage.out
+
+  # Test and lint the gin package
+  test-gin:
+    name: Test Gin Package
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules (gin)
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-gin-${{ hashFiles('gin/**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-gin-
+
+    - name: Download dependencies (gin)
+      working-directory: gin
+      run: go mod download
+
+    - name: Verify go.mod and go.sum (gin)
+      working-directory: gin
+      run: go mod verify
+
+    - name: Run golangci-lint (gin)
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.5.0
+        working-directory: gin
+
+    - name: Run tests (gin)
+      working-directory: gin
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Check test coverage (gin)
+      working-directory: gin
+      run: go tool cover -func=coverage.out

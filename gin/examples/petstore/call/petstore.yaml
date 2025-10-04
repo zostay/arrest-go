@@ -1,0 +1,152 @@
+openapi: 3.1.0
+info:
+  title: Pet Store API with Call Method Example
+  description: Demonstration of the Call method that automatically generates handlers
+  version: 1.0.0
+servers:
+  - url: http://petstore.swagger.io/v1
+paths:
+  /pets:
+    get:
+      tags:
+        - pets
+      summary: List all pets
+      operationId: listPets
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                description: ErrorResponse represents the standard error response format.
+        "200":
+          description: PetListResponse represents the response for listing pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      format: int64
+                    name:
+                      type: string
+                    tag:
+                      type: string
+                  description: Pet represents a pet in our system
+    post:
+      tags:
+        - pets
+      summary: Create a pet
+      operationId: createPets
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+                tag:
+                  type: string
+              description: CreatePetRequest represents the input for creating a pet
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                description: ErrorResponse represents the standard error response format.
+        "201":
+          description: Null response
+  /pets/{petId}:
+    get:
+      tags:
+        - pets
+      summary: Info for a specific pet
+      operationId: showByPetId
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                description: ErrorResponse represents the standard error response format.
+        "200":
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                  name:
+                    type: string
+                  tag:
+                    type: string
+                description: Pet represents a pet in our system

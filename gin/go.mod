@@ -1,10 +1,12 @@
 module github.com/zostay/arrest-go/gin
 
-go 1.23.0
+go 1.25
+
+replace github.com/zostay/arrest-go => ../
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658
 )
 

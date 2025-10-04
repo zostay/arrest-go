@@ -1,6 +1,6 @@
 module github.com/zostay/arrest-go
 
-go 1.23.0
+go 1.25
 
 require (
 	github.com/pb33f/libopenapi v0.22.3

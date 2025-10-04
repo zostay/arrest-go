@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # Enable version updates for Go modules in project root
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "zostay"
+    assignees:
+      - "zostay"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # Enable version updates for Go modules in gin subdirectory
+  - package-ecosystem: "gomod"
+    directory: "/gin"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "zostay"
+    assignees:
+      - "zostay"
+    commit-message:
+      prefix: "deps(gin)"
+      include: "scope"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "zostay"
+    assignees:
+      - "zostay"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

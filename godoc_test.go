@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/zostay/arrest-go"
 	"github.com/zostay/arrest-go/internal/test"
 )
@@ -16,7 +17,7 @@ func TestGoDocForStruct(t *testing.T) {
 	doc, flds, err := arrest.GoDocForStruct(reflect.TypeOf(test.DocStruct{}))
 	require.NoError(t, err)
 
-	assert.Equal(t, "DocStruct is a structure with documentation.\n", doc)
+	assert.Equal(t, "DocStruct is a structure with documentation.", doc)
 
 	assert.Equal(t, map[string]string{
 		"Foo": "Foo is a field.\n",
