@@ -146,7 +146,7 @@ func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 				fields[openApiKey] = newComment
 			}
 
-			return comment, fields, nil
+			return strings.TrimSpace(comment), fields, nil
 		}
 	}
 

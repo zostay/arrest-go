@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 { color: #333; }
+        .endpoint {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .get { background-color: #28a745; }
+        .post { background-color: #007bff; }
+        .put { background-color: #ffc107; color: #000; }
+        .delete { background-color: #dc3545; }
+        code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+        .example {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .feature {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 {{.title}}</h1>
+
+        <div class="feature">
+            <h3>✨ New Call Method Feature</h3>
+            <p>This demo showcases the new <code>Call()</code> method in arrest-go's gin package.
+            Instead of writing manual handlers, you can now simply pass your controller function
+            and the framework automatically:</p>
+            <ul>
+                <li>🔍 Validates function signatures</li>
+                <li>📋 Generates OpenAPI schemas from types</li>
+                <li>🔄 Maps HTTP requests to function calls</li>
+                <li>✅ Handles validation and error responses</li>
+                <li>🛡️ Provides panic protection (optional)</li>
+            </ul>
+        </div>
+
+        <h2>🔗 API Endpoints</h2>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/pets</strong>
+            <p>List all pets with optional filtering</p>
+            <div class="example">
+                <strong>Try:</strong> <code>curl "http://localhost:8080/pets?type=dog&limit=2"</code>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <strong>/pets</strong>
+            <p>Create a new pet</p>
+            <div class="example">
+                <strong>Try:</strong><br>
+                <code>curl -X POST "http://localhost:8080/pets?type=cat" \<br>
+                &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+                &nbsp;&nbsp;-d '{"name":"Whiskers","age":2}'</code>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/pets/{id}</strong>
+            <p>Get a specific pet by ID</p>
+            <div class="example">
+                <strong>Try:</strong> <code>curl "http://localhost:8080/pets/1"</code>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method put">PUT</span>
+            <strong>/pets/{id}</strong>
+            <p>Update an existing pet</p>
+            <div class="example">
+                <strong>Try:</strong><br>
+                <code>curl -X PUT "http://localhost:8080/pets/1" \<br>
+                &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+                &nbsp;&nbsp;-d '{"name":"Updated Name","type":"cat","age":4}'</code>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/pets/{id}/details</strong>
+            <p>Get pet details (with panic protection enabled)</p>
+            <div class="example">
+                <strong>Try:</strong> <code>curl "http://localhost:8080/pets/1/details"</code>
+            </div>
+        </div>
+
+        <h2>📖 Documentation</h2>
+        <p>
+            <a href="/openapi.yaml" target="_blank">View OpenAPI Specification</a> -
+            See the automatically generated OpenAPI spec that was created from the controller function signatures!
+        </p>
+
+        <h2>🚀 Code Comparison</h2>
+
+        <div class="feature">
+            <h3>Before (Traditional Handler)</h3>
+            <pre><code>doc.Post("/pets").
+    Summary("Create a pet").
+    RequestBody("application/json", arrest.ModelFrom[CreatePetRequest]()).
+    Response("200", func(r *arrest.Response) {
+        r.Description("Success").
+            Content("application/json", arrest.ModelFrom[Pet]())
+    }).
+    Handler(func(c *gin.Context) {
+        var req CreatePetRequest
+        if err := c.ShouldBindJSON(&req); err != nil {
+            c.JSON(400, gin.H{"error": err.Error()})
+            return
+        }
+
+        pet, err := CreatePet(c.Request.Context(), req)
+        if err != nil {
+            c.JSON(500, gin.H{"error": err.Error()})
+            return
+        }
+
+        c.JSON(200, pet)
+    })</code></pre>
+        </div>
+
+        <div class="feature">
+            <h3>After (New Call Method)</h3>
+            <pre><code>doc.Post("/pets").
+    Summary("Create a pet").
+    Call(CreatePet)</code></pre>
+        </div>
+
+        <p><strong>That's it!</strong> The Call method automatically handles all the boilerplate for you.</p>
+    </div>
+</body>
+</html>
