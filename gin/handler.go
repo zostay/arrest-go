@@ -65,7 +65,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 	if hasParameterFields(inputType) {
 		parameters := arrest.ParametersFromReflect(inputType)
 		o.postProcessParameters(parameters, inputType)
-		o.Operation.Parameters(parameters)
+		o.Parameters(parameters)
 	}
 
 	// Configure request body based on HTTP method and input type
@@ -74,7 +74,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		if hasBodyFields(inputType) {
 			// Use ModelFromReflect since we have the reflect.Type
 			inputModel := arrest.ModelFromReflect(inputType)
-			o.Operation.RequestBody("application/json", inputModel)
+			o.RequestBody("application/json", inputModel)
 		}
 	}
 
@@ -93,7 +93,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		errorModel = arrest.ModelFrom[ErrorResponse]()
 	}
 
-	o.Operation.Response("default", func(r *arrest.Response) {
+	o.Response("default", func(r *arrest.Response) {
 		// Use different descriptions based on error model type
 		description := "Error"
 		if len(options.errorModels) > 0 {

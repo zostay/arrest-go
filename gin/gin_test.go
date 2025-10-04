@@ -56,6 +56,7 @@ func GetPet(ctx context.Context, req GetPetRequest) (Pet, error) {
 }
 
 func UpdatePet(ctx context.Context, req UpdatePetRequest) (Pet, error) {
+	//nolint:staticcheck // this is example code
 	return Pet{
 		ID:   req.ID,
 		Name: req.Name,
