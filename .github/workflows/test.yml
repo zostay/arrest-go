@@ -82,6 +82,7 @@ jobs:
       uses: golangci/golangci-lint-action@v8
       with:
         version: v2.5.0
+        working-directory: gin
 
     - name: Run tests (gin)
       working-directory: gin

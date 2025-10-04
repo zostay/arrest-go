@@ -109,6 +109,9 @@ func BuildDoc() (*arrest.Document, error) {
 
 func BuildDocString() string {
 	doc, err := BuildDoc()
+	if err != nil {
+		panic(err)
+	}
 
 	rend, err := doc.OpenAPI.Render()
 	if err != nil {
