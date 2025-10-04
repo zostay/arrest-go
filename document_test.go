@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/zostay/arrest-go"
 )
 
@@ -386,8 +387,6 @@ components:
 `
 
 func TestDocument(t *testing.T) {
-	t.Parallel()
-
 	doc, err := arrest.NewDocument("")
 	require.NotNil(t, doc)
 	require.NoError(t, err)
@@ -403,8 +402,6 @@ func TestDocument(t *testing.T) {
 }
 
 func TestDocumentSkipDocumentation(t *testing.T) {
-	t.Parallel()
-
 	arrest.SkipDocumentation = true
 
 	doc, err := arrest.NewDocument("")

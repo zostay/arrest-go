@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/zostay/arrest-go"
 	"github.com/zostay/arrest-go/internal/test"
 )
