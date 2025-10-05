@@ -157,8 +157,8 @@ for dir in "${GO_MOD_DIRS[@]}"; do
     log_info "Running go mod tidy in: $dir"
 
     # Store current state of go.mod and go.sum
-    local go_mod_before=""
-    local go_sum_before=""
+    go_mod_before=""
+    go_sum_before=""
 
     if [[ -f "$dir/go.mod" ]]; then
         go_mod_before=$(cat "$dir/go.mod")
@@ -173,8 +173,8 @@ for dir in "${GO_MOD_DIRS[@]}"; do
         log_success "go mod tidy completed in $dir"
 
         # Check if files changed
-        local go_mod_after=""
-        local go_sum_after=""
+        go_mod_after=""
+        go_sum_after=""
 
         if [[ -f "$dir/go.mod" ]]; then
             go_mod_after=$(cat "$dir/go.mod")
