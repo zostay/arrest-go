@@ -96,14 +96,29 @@ jobs:
 
         git push origin HEAD
 
-    - name: Add comment to PR
+    - name: Trigger test workflow and comment on PR
       if: steps.verify-changes.outputs.changes == 'true'
       uses: actions/github-script@v6
       with:
         script: |
-          github.rest.issues.createComment({
+          // Trigger the test workflow
+          const response = await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'test.yaml',
+            ref: context.payload.pull_request.head.ref,
+            inputs: {
+              ref: context.payload.pull_request.head.sha,
+              reason: `Re-test after go mod tidy on PR #${context.issue.number}`
+            }
+          });
+
+          console.log('Triggered test workflow:', response);
+
+          // Add a single comment with all the information
+          await github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: '🤖 **Automatic go mod tidy completed**\n\nI ran `go mod tidy` in both the root directory and gin submodule to ensure all dependencies are properly synchronized.\n\nChanges made:\n- Updated go.mod and go.sum files as needed\n- Ensured consistency between root and gin module dependencies\n\nThe CI tests should now pass! ✅'
-          })
+            body: '🤖 **Automatic go mod tidy completed**\n\nI ran `go mod tidy` in both the root directory and gin submodule to ensure all dependencies are properly synchronized.\n\nChanges made:\n- Updated go.mod and go.sum files as needed\n- Ensured consistency between root and gin module dependencies\n\n✅ **Test workflow triggered!** Check the [Actions tab](../../actions) for test results.'
+          });
