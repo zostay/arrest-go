@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Script: retidy-pr
+# Purpose: Run go mod tidy on a PR branch using git worktrees
+# Usage: retidy-pr <branch-name>
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to sanitize branch name for directory use
+sanitize_name() {
+    local name="$1"
+    # Replace any non-alphanumeric characters (except dash and underscore) with underscores
+    echo "$name" | sed 's/[^a-zA-Z0-9_-]/_/g'
+}
+
+# Function to cleanup worktree on exit
+cleanup_worktree() {
+    if [[ -n "${WORKTREE_DIR:-}" ]] && [[ -d "$WORKTREE_DIR" ]]; then
+        log_info "Cleaning up worktree: $WORKTREE_DIR"
+        cd "$PROJECT_DIR"
+        git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
+        rm -rf "$WORKTREE_DIR" 2>/dev/null || true
+    fi
+}
+
+# Set up trap for cleanup
+trap cleanup_worktree EXIT
+
+# Show help if requested
+if [[ $# -eq 1 ]] && [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "retidy-pr - Run go mod tidy on a PR branch using git worktrees"
+    echo
+    echo "Usage: $0 <branch-name>"
+    echo
+    echo "Arguments:"
+    echo "  branch-name    The name of the branch to run go mod tidy on"
+    echo
+    echo "Examples:"
+    echo "  $0 feature/update-dependencies"
+    echo "  $0 dependabot/go_modules/github.com/gin-gonic/gin-1.9.0"
+    echo
+    echo "Description:"
+    echo "  This script creates a git worktree for the specified branch,"
+    echo "  runs 'go mod tidy' in all directories containing go.mod files,"
+    echo "  commits any changes, and pushes them back to the branch."
+    echo "  It also adds a comment to the associated PR if found."
+    exit 0
+fi
+
+# Validate arguments
+if [[ $# -ne 1 ]]; then
+    log_error "Usage: $0 <branch-name>"
+    log_error "Example: $0 feature/update-dependencies"
+    log_error "Use $0 --help for more information"
+    exit 1
+fi
+
+BRANCH_NAME="$1"
+
+# Validate branch name is not empty
+if [[ -z "$BRANCH_NAME" ]]; then
+    log_error "Branch name cannot be empty"
+    exit 1
+fi
+
+# Get current project directory
+PROJECT_DIR="$(pwd)"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
+
+# Sanitize branch name for directory naming
+SAFE_BRANCH_NAME=$(sanitize_name "$BRANCH_NAME")
+WORKTREE_DIR="${PROJECT_DIR}-retidy-${SAFE_BRANCH_NAME}"
+
+log_info "Starting retidy-pr for branch: $BRANCH_NAME"
+log_info "Project directory: $PROJECT_DIR"
+log_info "Worktree directory: $WORKTREE_DIR"
+
+# Check if we're in a git repository
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    log_error "Not in a git repository"
+    exit 1
+fi
+
+# Check if gh CLI is available
+if ! command -v gh >/dev/null 2>&1; then
+    log_error "GitHub CLI (gh) is not installed or not in PATH"
+    log_error "Install it from: https://cli.github.com/"
+    exit 1
+fi
+
+# Fetch latest changes
+log_info "Fetching latest changes from remote..."
+git fetch --all
+
+# Check if branch exists
+if ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH_NAME"; then
+    log_error "Branch '$BRANCH_NAME' does not exist on remote"
+    exit 1
+fi
+
+# Remove existing worktree directory if it exists
+if [[ -d "$WORKTREE_DIR" ]]; then
+    log_warning "Removing existing worktree directory: $WORKTREE_DIR"
+    rm -rf "$WORKTREE_DIR"
+fi
+
+# Create worktree
+log_info "Creating worktree for branch: $BRANCH_NAME"
+git worktree add "$WORKTREE_DIR" "origin/$BRANCH_NAME"
+
+# Change to worktree directory
+cd "$WORKTREE_DIR"
+
+# Find all directories with go.mod files
+log_info "Searching for go.mod files..."
+GO_MOD_DIRS=()
+while IFS= read -r -d '' dir; do
+    GO_MOD_DIRS+=("$(dirname "$dir")")
+done < <(find . -name "go.mod" -print0)
+
+if [[ ${#GO_MOD_DIRS[@]} -eq 0 ]]; then
+    log_error "No go.mod files found in the repository"
+    exit 1
+fi
+
+log_info "Found go.mod files in: ${GO_MOD_DIRS[*]}"
+
+# Track if any changes were made
+CHANGES_MADE=false
+
+# Run go mod tidy in each directory
+for dir in "${GO_MOD_DIRS[@]}"; do
+    log_info "Running go mod tidy in: $dir"
+
+    # Store current state of go.mod and go.sum
+    local go_mod_before=""
+    local go_sum_before=""
+
+    if [[ -f "$dir/go.mod" ]]; then
+        go_mod_before=$(cat "$dir/go.mod")
+    fi
+
+    if [[ -f "$dir/go.sum" ]]; then
+        go_sum_before=$(cat "$dir/go.sum")
+    fi
+
+    # Run go mod tidy
+    if (cd "$dir" && go mod tidy); then
+        log_success "go mod tidy completed in $dir"
+
+        # Check if files changed
+        local go_mod_after=""
+        local go_sum_after=""
+
+        if [[ -f "$dir/go.mod" ]]; then
+            go_mod_after=$(cat "$dir/go.mod")
+        fi
+
+        if [[ -f "$dir/go.sum" ]]; then
+            go_sum_after=$(cat "$dir/go.sum")
+        fi
+
+        if [[ "$go_mod_before" != "$go_mod_after" ]] || [[ "$go_sum_before" != "$go_sum_after" ]]; then
+            log_info "Changes detected in $dir"
+            CHANGES_MADE=true
+        fi
+    else
+        log_error "go mod tidy failed in $dir"
+        exit 1
+    fi
+done
+
+# Check if there are any changes to commit
+if git diff --quiet; then
+    log_info "No changes detected after running go mod tidy"
+    if [[ "$CHANGES_MADE" == "false" ]]; then
+        log_success "All go.mod and go.sum files are already up to date"
+    fi
+    exit 0
+fi
+
+# Stage all go.mod and go.sum files
+log_info "Staging go.mod and go.sum files..."
+git add */go.mod */go.sum go.mod go.sum 2>/dev/null || true
+
+# Check if there are staged changes
+if git diff --cached --quiet; then
+    log_info "No go.mod or go.sum changes to commit"
+    exit 0
+fi
+
+# Create commit message
+COMMIT_MSG="chore: run go mod tidy after dependency update
+
+This commit was automatically generated by the retidy-pr script
+to ensure go.mod and go.sum files are properly synchronized across
+all modules in the repository.
+
+Modules updated:
+$(printf '- %s\n' "${GO_MOD_DIRS[@]}")"
+
+# Commit changes
+log_info "Committing changes..."
+git commit -m "$COMMIT_MSG"
+
+# Push changes
+log_info "Pushing changes to branch: $BRANCH_NAME"
+git push origin "HEAD:$BRANCH_NAME"
+
+# Get PR number for this branch
+log_info "Looking up PR for branch: $BRANCH_NAME"
+PR_NUMBER=$(gh pr view "$BRANCH_NAME" --json number --jq '.number' 2>/dev/null || echo "")
+
+if [[ -n "$PR_NUMBER" ]]; then
+    # Add comment to PR
+    COMMENT_BODY="🤖 **Automatic go mod tidy completed**
+
+I ran \`go mod tidy\` in all modules to ensure dependencies are properly synchronized.
+
+**Modules updated:**
+$(printf '- %s\n' "${GO_MOD_DIRS[@]}")
+
+**Changes committed:**
+- Updated go.mod and go.sum files as needed
+- Ensured consistency across all Go modules
+
+The changes have been pushed to this branch."
+
+    log_info "Adding comment to PR #$PR_NUMBER"
+    gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY"
+    log_success "Comment added to PR #$PR_NUMBER"
+else
+    log_warning "Could not find PR for branch $BRANCH_NAME"
+    log_info "You may need to manually notify about the changes"
+fi
+
+log_success "retidy-pr completed successfully!"
+log_info "Changes have been committed and pushed to branch: $BRANCH_NAME"
