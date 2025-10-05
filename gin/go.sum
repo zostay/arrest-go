@@ -79,8 +79,8 @@ github.com/ugorji/go/codec v1.3.0 h1:Qd2W2sQawAfG8XSvzwhBeoGq71zXOC/Q1E9y/wUcsUA
 github.com/ugorji/go/codec v1.3.0/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2Wjqmfxj4=
 github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd h1:dLuIF2kX9c+KknGJUdJi1Il1SDiTSK158/BB9kdgAew=
 github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd/go.mod h1:DbzwytT4g/odXquuOCqroKvtxxldI4nb3nuesHF/Exo=
-github.com/zostay/go-std v0.8.0 h1:OR9h8eGkEBSCn5TsYjtb4gC/A8V2jndgdV9iI0KwWFo=
-github.com/zostay/go-std v0.8.0/go.mod h1:ix2L9dtfn2E4GIJnXTcw8MKd7nwiDzJHln7+/3L7XAE=
+github.com/zostay/go-std v0.10.0 h1:BgN4NyelJxrbG03kjQCXGXLEkv35gHEaN59DM33S8As=
+github.com/zostay/go-std v0.10.0/go.mod h1:gje2VXBK4+Zga00kQa7V7Oqb9h4gH33U8TIuqaOxL/0=
 go.uber.org/mock v0.5.0 h1:KAMbZvZPyBPWgD14IrIQ38QCyjwpvVVV6K/bHl1IwQU=
 go.uber.org/mock v0.5.0/go.mod h1:ge71pBPLYDk7QIi1LupWxdAykm7KIEFchiOqd6z7qMM=
 golang.org/x/arch v0.20.0 h1:dx1zTU0MAE98U+TQ8BLl7XsJbgze2WnNKF/8tGp/Q6c=
