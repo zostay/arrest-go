@@ -105,7 +105,7 @@ jobs:
           const response = await github.rest.actions.createWorkflowDispatch({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            workflow_id: 'test.yml',
+            workflow_id: 'test.yaml',
             ref: context.payload.pull_request.head.ref,
             inputs: {
               ref: context.payload.pull_request.head.sha,
