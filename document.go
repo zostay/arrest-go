@@ -2,7 +2,6 @@ package arrest
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"strings"
 
@@ -45,9 +44,9 @@ func NewDocumentFromBytes(bs []byte) (*Document, error) {
 // NewDocumentFrom creates a new Document from a v3.Document. This allows you
 // to add to an existing document using the DSL.
 func NewDocumentFrom(doc libopenapi.Document) (*Document, error) {
-	dm, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+	dm, err := doc.BuildV3Model()
+	if err != nil {
+		return nil, err
 	}
 
 	return &Document{
@@ -70,9 +69,9 @@ func NewDocument(title string) (*Document, error) {
 }
 
 func (d *Document) Refresh() error {
-	_, _, dm, errs := d.OpenAPI.RenderAndReload()
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	_, _, dm, err := d.OpenAPI.RenderAndReload()
+	if err != nil {
+		return err
 	}
 
 	d.DataModel = dm
