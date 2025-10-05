@@ -40,6 +40,7 @@ jobs:
       uses: golangci/golangci-lint-action@v8
       with:
         version: v2.5.0
+        only-new-issues: 'true'
 
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
@@ -83,6 +84,7 @@ jobs:
       with:
         version: v2.5.0
         working-directory: gin
+        only-new-issues: 'true'
 
     - name: Run tests (gin)
       working-directory: gin
