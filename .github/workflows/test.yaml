@@ -20,16 +20,6 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-main-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-main-
-
     - name: Download dependencies
       run: go mod download
 
@@ -60,16 +50,6 @@ jobs:
       uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GO_VERSION }}
-
-    - name: Cache Go modules (gin)
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-gin-${{ hashFiles('gin/**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-gin-
 
     - name: Download dependencies (gin)
       working-directory: gin
