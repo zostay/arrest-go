@@ -98,7 +98,7 @@ jobs:
 
     - name: Trigger test workflow and comment on PR
       if: steps.verify-changes.outputs.changes == 'true'
-      uses: actions/github-script@v6
+      uses: actions/github-script@v8
       with:
         script: |
           // Trigger the test workflow
