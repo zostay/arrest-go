@@ -4,16 +4,6 @@ on:
   push:
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: 'Git ref to test (branch, tag, or commit SHA)'
-        required: false
-        default: ''
-      reason:
-        description: 'Reason for manual trigger'
-        required: false
-        default: 'Manual trigger'
 
 env:
   GO_VERSION: '1.25'
@@ -27,7 +17,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
       with:
-        ref: ${{ github.event.inputs.ref || github.ref }}
 
     - name: Set up Go
       uses: actions/setup-go@v6
@@ -69,7 +58,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
       with:
-        ref: ${{ github.event.inputs.ref || github.ref }}
 
     - name: Set up Go
       uses: actions/setup-go@v6

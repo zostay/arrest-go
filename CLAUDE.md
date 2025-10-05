@@ -8,23 +8,52 @@ AR! Rest! is a Go library that provides a Domain Specific Language (DSL) for gen
 
 ## Common Commands
 
+### Quick Development (using Makefile)
+```bash
+make help                        # Show all available targets
+make test                        # Run tests in both root and gin modules
+make quick-check                 # Format, vet, and test (fast dev cycle)
+make ci                          # Run full CI pipeline locally
+make dev-setup                   # Setup development environment
+```
+
 ### Testing
 ```bash
-go test ./...                    # Run all tests in project
-go test -v ./...                 # Verbose test output  
-go test -race ./...              # Test with race detection
-go test -run TestModelFrom       # Run specific test patterns
-go test ./gin/...                # Test gin integration only
+make test                        # Run all tests in both modules
+make test-verbose                # Verbose test output
+make test-race                   # Test with race detection
+make test-coverage               # Test with coverage reports
+make bench                       # Run benchmarks
+go test -run TestModelFrom       # Run specific test patterns (manual)
 ```
 
 ### Building
 ```bash
-go build ./...                   # Build all packages
-go mod tidy                      # Clean up dependencies
-go run examples/petstore.go      # Run main example
-go run gin/examples/petstore/rest/petstore.go  # Run gin example
-go run gin/examples/petstore/call/petstore.go  # Run gin Call method example
+make build                       # Build all packages in both modules
+make clean                       # Clean build artifacts and caches
+make examples                    # Run all example programs
 ```
+
+### Code Quality
+```bash
+make fmt                         # Format code in both modules
+make vet                         # Run go vet in both modules
+make lint                        # Run golangci-lint in both modules
+make check                       # Run fmt + vet + lint
+```
+
+### Dependency Management
+```bash
+make mod-tidy                    # Run go mod tidy in both modules
+make mod-verify                  # Verify modules
+make mod-download                # Download dependencies
+scripts/retidy-pr <branch-name>  # Run go mod tidy on a PR branch using git worktrees
+scripts/retidy-prs               # Run retidy-pr on all PRs with failed tests
+scripts/retidy-pr --help         # Show retidy-pr usage information
+scripts/retidy-prs --help        # Show retidy-prs usage information
+```
+
+The `retidy-pr` script is useful for handling individual Dependabot PRs that need `go mod tidy` synchronization across multiple modules. The `retidy-prs` script automates this by processing all open PRs with failed tests.
 
 ## Architecture Overview
 

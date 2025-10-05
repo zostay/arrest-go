@@ -51,7 +51,7 @@ type GetPetRequest struct {
 
 // PetListRequest represents the input for listing pets
 type PetListRequest struct {
-	Type  string `json:"type" openapi:",in=query"`
+	Type string `json:"type" openapi:",in=query"`
 	// Limit specifies the maximum number of pets to return
 	Limit int32 `json:"limit" openapi:",in=query,required"`
 }
