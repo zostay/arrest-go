@@ -221,7 +221,7 @@ to ensure go.mod and go.sum files are properly synchronized across
 all modules in the repository.
 
 Modules updated:
-$(printf '- %s\n' "${GO_MOD_DIRS[@]}")"
+$(printf -- '- %s\n' "${GO_MOD_DIRS[@]}")"
 
 # Commit changes
 log_info "Committing changes..."
@@ -242,7 +242,7 @@ if [[ -n "$PR_NUMBER" ]]; then
 I ran \`go mod tidy\` in all modules to ensure dependencies are properly synchronized.
 
 **Modules updated:**
-$(printf '- %s\n' "${GO_MOD_DIRS[@]}")
+$(printf -- '- %s\n' "${GO_MOD_DIRS[@]}")
 
 **Changes committed:**
 - Updated go.mod and go.sum files as needed

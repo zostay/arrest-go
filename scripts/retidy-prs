@@ -35,6 +35,14 @@ log_section() {
     echo -e "${CYAN}[SECTION]${NC} $1"
 }
 
+# Handle debug mode
+DEBUG_MODE=false
+if [[ $# -eq 1 ]] && [[ "$1" == "--debug" || "$1" == "-d" ]]; then
+    DEBUG_MODE=true
+    set -x
+    shift
+fi
+
 # Show help if requested
 if [[ $# -eq 1 ]] && [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "retidy-prs - Run retidy-pr on all pull requests with failed tests"
@@ -53,6 +61,7 @@ if [[ $# -eq 1 ]] && [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo
     echo "Examples:"
     echo "  $0                    # Process all PRs with failed tests"
+    echo "  $0 --debug           # Run in debug mode with verbose output"
     echo "  $0 --help            # Show this help"
     exit 0
 fi
@@ -118,15 +127,25 @@ if [[ "$PRS_JSON" == "[]" ]]; then
 fi
 
 # Parse PR list and check status of each
-echo "$PRS_JSON" | jq -r '.[] | "\(.number)|\(.headRefName)|\(.title)|\(.author.login)"' | while IFS='|' read -r pr_number branch_name title author; do
+# Use process substitution to avoid subshell issues
+while IFS='|' read -r pr_number branch_name title author; do
     log_info "Checking PR #$pr_number: $title (by $author)"
 
     # Get status checks for this PR
     # We'll check for failed status checks related to tests
-    STATUS_CHECKS=$(gh pr checks "$pr_number" --json name,status,conclusion 2>/dev/null || echo "[]")
+    STATUS_CHECKS=$(gh pr checks "$pr_number" --json name,state,description 2>/dev/null || echo "[]")
+
+    if [[ "$DEBUG_MODE" == "true" ]]; then
+        echo "DEBUG: Status checks for PR #$pr_number:"
+        echo "$STATUS_CHECKS" | jq '.'
+    fi
 
     # Check if there are any failed test-related status checks
-    FAILED_TESTS=$(echo "$STATUS_CHECKS" | jq -r '.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out") | select(.name | test("test|Test|lint|Lint|ci|CI")) | .name' 2>/dev/null || true)
+    FAILED_TESTS=$(echo "$STATUS_CHECKS" | jq -r '.[] | select(.state == "FAILURE" or .state == "CANCELLED" or .state == "TIMED_OUT") | select(.name | test("test|Test|lint|Lint|ci|CI")) | .name' 2>/dev/null || true)
+
+    if [[ "$DEBUG_MODE" == "true" ]]; then
+        echo "DEBUG: Failed tests for PR #$pr_number: '$FAILED_TESTS'"
+    fi
 
     if [[ -n "$FAILED_TESTS" ]]; then
         echo "$pr_number|$branch_name" >> /tmp/failed_prs.txt
@@ -137,7 +156,7 @@ echo "$PRS_JSON" | jq -r '.[] | "\(.number)|\(.headRefName)|\(.title)|\(.author.
     else
         log_info "PR #$pr_number ($branch_name) has no failed tests"
     fi
-done
+done < <(echo "$PRS_JSON" | jq -r '.[] | "\(.number)|\(.headRefName)|\(.title)|\(.author.login)"')
 
 # Read the failed PRs from temp file
 if [[ -f /tmp/failed_prs.txt ]]; then
