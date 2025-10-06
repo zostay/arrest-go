@@ -152,3 +152,32 @@ func GoDocForStruct(t reflect.Type) (string, map[string]string, error) {
 
 	return "", nil, nil
 }
+
+// GoDocForType extracts godoc comments for any named type (struct, type alias, etc.)
+func GoDocForType(t reflect.Type) string {
+	if t.PkgPath() == "" || t.Name() == "" {
+		return ""
+	}
+
+	// First try the existing GoDocForStruct for struct types
+	if t.Kind() == reflect.Struct {
+		if comment, _, err := GoDocForStruct(t); err == nil && comment != "" {
+			return comment
+		}
+	}
+
+	// For non-struct types, we need to manually extract from package doc
+	docPkg, err := getPackageDoc(t.PkgPath())
+	if err != nil || docPkg == nil {
+		return ""
+	}
+
+	// Look for the type in the package documentation
+	for _, docType := range docPkg.Types {
+		if docType.Name == t.Name() {
+			return strings.TrimSpace(docType.Doc)
+		}
+	}
+
+	return ""
+}

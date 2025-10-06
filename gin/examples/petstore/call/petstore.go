@@ -65,6 +65,7 @@ var pets = []Pet{
 var nextID int64 = 4
 
 // Controller functions
+
 func CreatePet(ctx context.Context, req CreatePetRequest) (*Pet, error) {
 	pet := Pet{
 		ID:   nextID,
@@ -128,30 +129,19 @@ func BuildDoc(router gin.IRoutes) (*arrestgin.Document, error) {
 		OperationID("listPets").
 		Tags("pets").
 		Summary("List all pets").
-		Call(ListPets).
-		Response("200", func(r *arrest.Response) {
-			r.Description("PetListResponse represents the response for listing pets").
-				Content("application/json", arrest.ModelFrom[Pets]())
-		})
+		Call(ListPets)
 
 	doc.Post("/pets").
 		OperationID("createPets").
 		Tags("pets").
 		Summary("Create a pet").
-		Call(CreatePet).
-		Response("201", func(r *arrest.Response) {
-			r.Description("Null response")
-		})
+		Call(CreatePet)
 
 	doc.Get("/pets/{petId}").
 		OperationID("showByPetId").
 		Tags("pets").
 		Summary("Info for a specific pet").
-		Call(GetPet).
-		Response("200", func(r *arrest.Response) {
-			r.Description("Expected response to a valid request").
-				Content("application/json", arrest.ModelFrom[Pet]())
-		})
+		Call(GetPet)
 
 	// Check for any errors in the document setup
 	if err := arrestDoc.Err(); err != nil {
