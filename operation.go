@@ -61,6 +61,13 @@ func (o *Operation) Tags(tags ...string) *Operation {
 	return o
 }
 
+// Deprecated marks the operation as deprecated.
+func (o *Operation) Deprecated() *Operation {
+	deprecated := true
+	o.Operation.Deprecated = &deprecated
+	return o
+}
+
 // Parameters adds parameters to the operation.
 func (o *Operation) Parameters(ps *Parameters) *Operation {
 	if o.Operation.Parameters == nil {
