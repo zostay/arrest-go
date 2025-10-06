@@ -80,7 +80,31 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 
 	// Store output model for later use if needed
 	outputModel := arrest.ModelFromReflect(outputType)
-	_ = outputModel // TODO: Make this available for manual response configuration
+
+	// Configure success response with output model
+	// Only add if no responses have been configured yet
+	hasAnyResponse := o.Operation.Operation.Responses != nil &&
+		o.Operation.Operation.Responses.Codes != nil &&
+		o.Operation.Operation.Responses.Codes.Len() > 0
+
+	if !hasAnyResponse {
+		o.Response("200", func(r *arrest.Response) {
+			// Get description from output model's godoc
+			description := "Success"
+			actualType := outputType
+			if outputType.Kind() == reflect.Ptr {
+				actualType = outputType.Elem()
+			}
+			if actualType.PkgPath() != "" && actualType.Name() != "" {
+				if godocComment := arrest.GoDocForType(actualType); godocComment != "" {
+					description = godocComment
+				}
+			}
+
+			r.Description(description).
+				Content("application/json", outputModel)
+		})
+	}
 
 	// Configure error response
 	var errorModel *arrest.Model
