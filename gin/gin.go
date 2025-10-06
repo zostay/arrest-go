@@ -133,6 +133,12 @@ func (o *Operation) Tags(tags ...string) *Operation {
 	return o
 }
 
+// Deprecated marks the operation as deprecated.
+func (o *Operation) Deprecated() *Operation {
+	o.Operation.Deprecated()
+	return o
+}
+
 // Call automatically generates a handler for the given controller function.
 // The controller must have the signature: func(ctx context.Context, input T) (output U, error)
 // where T is the input type and U is the output type.
