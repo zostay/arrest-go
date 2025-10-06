@@ -274,17 +274,23 @@ func (o *Operation) generateHandler(controller interface{}, inputType, outputTyp
 
 // extractInput extracts and validates input from the HTTP request based on the input type.
 func (o *Operation) extractInput(c *gin2.Context, inputType reflect.Type) (reflect.Value, error) {
-	// Create a new instance of the input type
-	input := reflect.New(inputType)
-	inputElem := input.Elem()
+	isPointerType := inputType.Kind() == reflect.Ptr
 
-	if inputType.Kind() == reflect.Ptr {
+	// Create a new instance of the input type
+	var input reflect.Value
+	var inputElem reflect.Value
+
+	if isPointerType {
 		// If the input type is a pointer, we need to create the pointed-to type
 		pointedType := inputType.Elem()
 		pointedValue := reflect.New(pointedType)
 		input = pointedValue
 		inputElem = pointedValue.Elem()
 		inputType = pointedType
+	} else {
+		// For non-pointer types, create a pointer to the type and work with the element
+		input = reflect.New(inputType)
+		inputElem = input.Elem()
 	}
 
 	if inputType.Kind() != reflect.Struct {
@@ -293,6 +299,9 @@ func (o *Operation) extractInput(c *gin2.Context, inputType reflect.Type) (refle
 			if err := c.ShouldBindJSON(input.Interface()); err != nil {
 				return reflect.Value{}, fmt.Errorf("failed to parse request body: %w", err)
 			}
+		}
+		if isPointerType {
+			return input, nil
 		}
 		return input.Elem(), nil
 	}
@@ -384,6 +393,9 @@ func (o *Operation) extractInput(c *gin2.Context, inputType reflect.Type) (refle
 		}
 	}
 
+	if isPointerType {
+		return input, nil
+	}
 	return inputElem, nil
 }
 
