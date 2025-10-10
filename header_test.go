@@ -34,7 +34,7 @@ func TestHeader(t *testing.T) {
 	doc.Get("/header").
 		Response("200", func(r *arrest.Response) {
 			r.Description("A test response").
-				Header("x-foo", arrest.ModelFrom[string](), func(h *arrest.Header) {
+				Header("x-foo", arrest.ModelFrom[string](doc), func(h *arrest.Header) {
 					h.Description("A test header")
 				})
 		})

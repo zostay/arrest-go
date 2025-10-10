@@ -59,25 +59,25 @@ func BuildDoc() (*arrest.Document, error) {
 		Parameters(listPets).
 		Response("200", func(r *arrest.Response) {
 			r.Description("A list of pets").
-				Header("x-next", arrest.ModelFrom[string](), func(h *arrest.Header) {
+				Header("x-next", arrest.ModelFrom[string](doc), func(h *arrest.Header) {
 					h.Description("A link to the next page of responses")
 				}).
-				Content("application/json", arrest.ModelFrom[Pets]())
+				Content("application/json", arrest.ModelFrom[Pets](doc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	doc.Post("/pets").
 		Summary("Create a pet").
 		OperationID("createPets").
 		Tags("pets").
-		RequestBody("application/json", arrest.ModelFrom[Pet]()).
+		RequestBody("application/json", arrest.ModelFrom[Pet](doc)).
 		Response("201", func(r *arrest.Response) { r.Description("Null response") }).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	showByPetId := arrest.ParametersFromReflect(reflect.TypeOf(ShowByPetID)).
@@ -93,11 +93,11 @@ func BuildDoc() (*arrest.Document, error) {
 		Parameters(showByPetId).
 		Response("200", func(r *arrest.Response) {
 			r.Description("Expected response to a valid request").
-				Content("application/json", arrest.ModelFrom[Pet]())
+				Content("application/json", arrest.ModelFrom[Pet](doc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	if doc.Err() != nil {

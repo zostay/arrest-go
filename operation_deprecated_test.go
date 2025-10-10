@@ -1,16 +1,18 @@
-package arrest
+package arrest_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/zostay/arrest-go"
 )
 
 func TestOperation_Deprecated(t *testing.T) {
 	t.Parallel()
 
-	doc, err := NewDocument("test")
+	doc, err := arrest.NewDocument("test")
 	require.NoError(t, err)
 
 	// Test deprecated operation

@@ -31,6 +31,7 @@ func NewDocument(doc *arrest.Document, r gin.IRoutes) *Document {
 func (d *Document) Get(pattern string) *Operation {
 	return &Operation{
 		Operation: *d.Document.Get(pattern),
+		Document:  d.Document,
 		method:    http.MethodGet,
 		pattern:   pattern,
 		r:         d.r,
@@ -41,6 +42,7 @@ func (d *Document) Get(pattern string) *Operation {
 func (d *Document) Post(pattern string) *Operation {
 	return &Operation{
 		Operation: *d.Document.Post(pattern),
+		Document:  d.Document,
 		method:    http.MethodPost,
 		pattern:   pattern,
 		r:         d.r,
@@ -51,6 +53,7 @@ func (d *Document) Post(pattern string) *Operation {
 func (d *Document) Put(pattern string) *Operation {
 	return &Operation{
 		Operation: *d.Document.Put(pattern),
+		Document:  d.Document,
 		method:    http.MethodPut,
 		pattern:   pattern,
 		r:         d.r,
@@ -61,6 +64,7 @@ func (d *Document) Put(pattern string) *Operation {
 func (d *Document) Delete(pattern string) *Operation {
 	return &Operation{
 		Operation: *d.Document.Delete(pattern),
+		Document:  d.Document,
 		method:    http.MethodDelete,
 		pattern:   pattern,
 		r:         d.r,
@@ -70,9 +74,10 @@ func (d *Document) Delete(pattern string) *Operation {
 // Operation wraps an arrest.Operation and provides Gin-specific route registration methods.
 type Operation struct {
 	arrest.Operation
-	method  string
-	pattern string
-	r       gin.IRoutes
+	Document *arrest.Document
+	method   string
+	pattern  string
+	r        gin.IRoutes
 }
 
 // paramRegex matches OpenAPI-style path parameters (e.g., {id}).

@@ -73,13 +73,13 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		// For POST, PUT, etc., use the input type as request body (unless it has only query/path params)
 		if hasBodyFields(inputType) {
 			// Use ModelFromReflect since we have the reflect.Type
-			inputModel := arrest.ModelFromReflect(inputType)
+			inputModel := arrest.ModelFromReflect(inputType, o.Document)
 			o.RequestBody("application/json", inputModel)
 		}
 	}
 
 	// Store output model for later use if needed
-	outputModel := arrest.ModelFromReflect(outputType)
+	outputModel := arrest.ModelFromReflect(outputType, o.Document)
 
 	// Configure success response with output model
 	// Only add if no responses have been configured yet
@@ -114,7 +114,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		// TODO: Implement OneOf functionality for combining multiple error models
 	} else {
 		// Use default error model
-		errorModel = arrest.ModelFrom[ErrorResponse]()
+		errorModel = arrest.ModelFrom[ErrorResponse](o.Document)
 	}
 
 	o.Response("default", func(r *arrest.Response) {
