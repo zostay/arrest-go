@@ -71,14 +71,17 @@ func OpenAPI(doc *arrest.Document) error {
 		Version("0.0.1")
 
 	doc.PackageMap("zostay.arrest.test.v1", "github.com/zostay/arrest-go_test")
+	doc.PackageMap("zostay.arrest.test.v1", "command-line-arguments_test")
 
-	errRef := doc.SchemaComponentRef(arrest.ModelFrom[ErrorPayload]()).
-		Description("An error response.").Ref()
+	errModel := arrest.ModelFrom[ErrorPayload](doc, arrest.AsComponent()).
+		Description("An error response.")
+	errRef := arrest.SchemaRef(errModel.MappedName(doc.PkgMap))
 
 	// List Connections
 	{
-		resRef := doc.SchemaComponentRef(arrest.ModelFrom[ListConnectionsResponse]()).
-			Description("The list of connection configurations.").Ref()
+		resModel := arrest.ModelFrom[ListConnectionsResponse](doc, arrest.AsComponent()).
+			Description("The list of connection configurations.")
+		resRef := arrest.SchemaRef(resModel.MappedName(doc.PkgMap))
 
 		doc.Get("/connections").
 			Description("List all connection configurations").
@@ -95,10 +98,12 @@ func OpenAPI(doc *arrest.Document) error {
 
 	// Create Connection
 	{
-		reqRef := doc.SchemaComponentRef(arrest.ModelFrom[CreateConnectionRequest]()).
-			Description("The request to create a new connection configuration.").Ref()
-		resRef := doc.SchemaComponentRef(arrest.ModelFrom[CreateConnectionResponse]()).
-			Description("The response to creating a new connection configuration.").Ref()
+		reqModel := arrest.ModelFrom[CreateConnectionRequest](doc, arrest.AsComponent()).
+			Description("The request to create a new connection configuration.")
+		reqRef := arrest.SchemaRef(reqModel.MappedName(doc.PkgMap))
+		resModel := arrest.ModelFrom[CreateConnectionResponse](doc, arrest.AsComponent()).
+			Description("The response to creating a new connection configuration.")
+		resRef := arrest.SchemaRef(resModel.MappedName(doc.PkgMap))
 
 		doc.Post("/connections").
 			Description("Create a new connection configuration").
@@ -116,8 +121,9 @@ func OpenAPI(doc *arrest.Document) error {
 
 	// Get Connection
 	{
-		resRef := doc.SchemaComponentRef(arrest.ModelFrom[GetConnectionResponse]()).
-			Description("The response to getting a connection configuration.").Ref()
+		resModel := arrest.ModelFrom[GetConnectionResponse](doc, arrest.AsComponent()).
+			Description("The response to getting a connection configuration.")
+		resRef := arrest.SchemaRef(resModel.MappedName(doc.PkgMap))
 
 		getConnectionByID := arrest.ParametersFromReflect(reflect.TypeOf(GetConnectionByID)).
 			P(0, func(p *arrest.Parameter) {
@@ -141,16 +147,18 @@ func OpenAPI(doc *arrest.Document) error {
 
 	// Update Connection
 	{
-		reqRef := doc.SchemaComponentRef(arrest.ModelFrom[UpdateConnectionRequest]()).
-			Description("The request to update a connection configuration.").Ref()
+		reqModel := arrest.ModelFrom[UpdateConnectionRequest](doc, arrest.AsComponent()).
+			Description("The request to update a connection configuration.")
+		reqRef := arrest.SchemaRef(reqModel.MappedName(doc.PkgMap))
 
-		resRef := doc.SchemaComponentRef(arrest.ModelFrom[UpdateConnectionResponse]()).
-			Description("The response to updating a connection configuration.").Ref()
+		resModel := arrest.ModelFrom[UpdateConnectionResponse](doc, arrest.AsComponent()).
+			Description("The response to updating a connection configuration.")
+		resRef := arrest.SchemaRef(resModel.MappedName(doc.PkgMap))
 
 		updateConnectionWithId := arrest.NParameters(1).
 			P(0, func(p *arrest.Parameter) {
 				p.Name("id").In("path").Required().
-					Model(arrest.ModelFrom[string]()).
+					Model(arrest.ModelFrom[string](doc)).
 					Description("The ID of the connection configuration to update")
 			})
 
@@ -387,6 +395,8 @@ components:
 `
 
 func TestDocument(t *testing.T) {
+	t.Parallel()
+
 	doc, err := arrest.NewDocument("")
 	require.NotNil(t, doc)
 	require.NoError(t, err)
@@ -398,11 +408,14 @@ func TestDocument(t *testing.T) {
 	rend, err := doc.OpenAPI.Render()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rend)
-	assert.Equal(t, expect, string(rend))
+	assert.YAMLEq(t, expect, string(rend))
+	//assert.Equal(t, expect, string(rend))
 }
 
 func TestDocumentSkipDocumentation(t *testing.T) {
+	// global variables used, do not t.Parallel()
 	arrest.SkipDocumentation = true
+	defer func() { arrest.SkipDocumentation = false }()
 
 	doc, err := arrest.NewDocument("")
 	require.NotNil(t, doc)
@@ -415,5 +428,6 @@ func TestDocumentSkipDocumentation(t *testing.T) {
 	rend, err := doc.OpenAPI.Render()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rend)
-	assert.Equal(t, expect, string(rend))
+	assert.YAMLEq(t, expect, string(rend))
+	//assert.Equal(t, expect, string(rend))
 }

@@ -1,13 +1,16 @@
 package arrest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
@@ -383,8 +386,95 @@ func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.S
 	return schema, err
 }
 
-// ModelFromReflect creates a new Model from a reflect.Type.
-func ModelFromReflect(t reflect.Type) *Model {
+// ModelOption configures model creation behavior.
+type ModelOption func(*modelConfig)
+
+type modelConfig struct {
+	asComponent   bool
+	componentName string
+}
+
+// AsComponent registers the model as a schema component in the document.
+func AsComponent() ModelOption {
+	return func(c *modelConfig) {
+		c.asComponent = true
+	}
+}
+
+// WithComponentName registers the model as a schema component with a custom name.
+func WithComponentName(name string) ModelOption {
+	return func(c *modelConfig) {
+		c.asComponent = true
+		c.componentName = name
+	}
+}
+
+// ModelFromReflect creates a new Model from a reflect.Type with document context.
+func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model {
+	mr := newRefMapper(t.PkgPath())
+	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
+	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
+	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs}, err)
+	if m.SchemaProxy == nil {
+		panic("nope")
+	} else if m.SchemaProxy.Schema() == nil {
+		panic("noper")
+	}
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	// Apply package mapping to schema references
+	if slices.Contains(m.SchemaProxy.Schema().Type, "object") {
+		remapSchemaRefs(context.TODO(), m.SchemaProxy, doc.PkgMap)
+	}
+	for _, sp := range m.ExtractChildRefs() {
+		if slices.Contains(sp.Schema().Type, "object") {
+			remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
+		}
+	}
+
+	// Process options
+	config := &modelConfig{}
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	// Register as component if requested
+	if config.asComponent {
+		fqn := config.componentName
+		if fqn == "" {
+			fqn = m.MappedName(doc.PkgMap)
+		}
+
+		if doc.DataModel.Model.Components == nil {
+			doc.DataModel.Model.Components = &v3.Components{}
+		}
+		c := doc.DataModel.Model.Components
+		if c.Schemas == nil {
+			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
+		}
+		c.Schemas.Set(fqn, m.SchemaProxy)
+
+		// Register child references only when parent is a component
+		for goPkg, sp := range m.ExtractChildRefs() {
+			childFqn := MappedName(goPkg, doc.PkgMap)
+			c.Schemas.Set(childFqn, sp)
+		}
+	}
+
+	return m
+}
+
+// ModelFrom creates a new Model from a type with document context.
+func ModelFrom[T any](doc *Document, opts ...ModelOption) *Model {
+	var t T
+	return ModelFromReflect(reflect.TypeOf(t), doc, opts...)
+}
+
+// ModelFromReflectOnly creates a new Model from a reflect.Type without document context.
+// This is intended for simple cases like parameters where document registration is not needed.
+func ModelFromReflectOnly(t reflect.Type) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
@@ -397,10 +487,11 @@ func ModelFromReflect(t reflect.Type) *Model {
 	return m
 }
 
-// ModelFrom creates a new Model from a type.
-func ModelFrom[T any]() *Model {
+// ModelFromOnly creates a new Model from a type without document context.
+// This is intended for simple cases like parameters where document registration is not needed.
+func ModelFromOnly[T any]() *Model {
 	var t T
-	return ModelFromReflect(reflect.TypeOf(t))
+	return ModelFromReflectOnly(reflect.TypeOf(t))
 }
 
 func SchemaRef(fqn string) *Model {

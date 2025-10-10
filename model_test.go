@@ -31,7 +31,10 @@ paths:
 func TestModelFrom_WithOneOf(t *testing.T) {
 	t.Parallel()
 
-	myEnum := arrest.ModelFrom[string]().OneOf(
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	myEnum := arrest.ModelFrom[string](doc).OneOf(
 		arrest.Enumeration{
 			Const:       "foo",
 			Title:       "Foo",
@@ -45,9 +48,6 @@ func TestModelFrom_WithOneOf(t *testing.T) {
 	)
 
 	assert.NoError(t, myEnum.Err())
-
-	doc, err := arrest.NewDocument("test")
-	require.NoError(t, err)
 
 	doc.Put("/simple").
 		RequestBody("text/plain", myEnum)
@@ -109,8 +109,12 @@ func TestModelFrom_RefName(t *testing.T) {
 	doc.PackageMap(
 		"zostay.test", "github.com/zostay/arrest-go_test",
 	)
+	doc.PackageMap(
+		"zostay.test", "command-line-arguments_test",
+	)
 
-	reqRef := doc.SchemaComponentRef(arrest.ModelFrom[PersonWithRefName]()).Ref()
+	model := arrest.ModelFrom[PersonWithRefName](doc, arrest.AsComponent())
+	reqRef := arrest.SchemaRef(model.MappedName(doc.PkgMap))
 
 	doc.Put("/simple").
 		RequestBody("application/json", reqRef)
@@ -169,8 +173,12 @@ func TestModelFrom_ElemRefName(t *testing.T) {
 	doc.PackageMap(
 		"zostay.test", "github.com/zostay/arrest-go_test",
 	)
+	doc.PackageMap(
+		"zostay.test", "command-line-arguments_test",
+	)
 
-	reqRef := doc.SchemaComponentRef(arrest.ModelFrom[PersonWithElemRefName]()).Ref()
+	model := arrest.ModelFrom[PersonWithElemRefName](doc, arrest.AsComponent())
+	reqRef := arrest.SchemaRef(model.MappedName(doc.PkgMap))
 
 	doc.Put("/simple").
 		RequestBody("application/json", reqRef)
@@ -228,9 +236,13 @@ func TestModelFrom_RecursiveStruct(t *testing.T) {
 	doc.PackageMap(
 		"zostay.test", "github.com/zostay/arrest-go_test",
 	)
+	doc.PackageMap(
+		"zostay.test", "command-line-arguments_test",
+	)
 
 	// This test ensures that recursive structs don't cause infinite recursion
-	resRef := doc.SchemaComponentRef(arrest.ModelFrom[RecursiveStruct]()).Ref()
+	model := arrest.ModelFrom[RecursiveStruct](doc, arrest.AsComponent())
+	resRef := arrest.SchemaRef(model.MappedName(doc.PkgMap))
 
 	doc.Get("/recursive").
 		Response("200", func(r *arrest.Response) {
@@ -296,9 +308,13 @@ func TestModelFrom_DeeperRecursiveStruct(t *testing.T) {
 	doc.PackageMap(
 		"zostay.test", "github.com/zostay/arrest-go_test",
 	)
+	doc.PackageMap(
+		"zostay.test", "command-line-arguments_test",
+	)
 
 	// This test ensures that recursive structs don't cause infinite recursion
-	resRef := doc.SchemaComponentRef(arrest.ModelFrom[DeeperRecursiveStruct]()).Ref()
+	model := arrest.ModelFrom[DeeperRecursiveStruct](doc, arrest.AsComponent())
+	resRef := arrest.SchemaRef(model.MappedName(doc.PkgMap))
 
 	doc.Get("/recursive").
 		Response("200", func(r *arrest.Response) {
@@ -328,8 +344,11 @@ type DeepRecursiveStruct struct {
 func TestModelFrom_DeepRecursiveStruct(t *testing.T) {
 	t.Parallel()
 
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
 	// Test more complex recursive patterns
-	model := arrest.ModelFrom[DeepRecursiveStruct]()
+	model := arrest.ModelFrom[DeepRecursiveStruct](doc)
 	assert.NoError(t, model.Err())
 
 	require.NotNil(t, model.SchemaProxy)
@@ -445,15 +464,19 @@ func TestModelFrom_Ledger(t *testing.T) {
 	doc.PackageMap(
 		"zostay.test", "github.com/zostay/arrest-go_test",
 	)
+	doc.PackageMap(
+		"zostay.test", "command-line-arguments_test",
+	)
 
 	listAccounts := arrest.NParameters(1).
 		P(0, func(p *arrest.Parameter) {
 			p.Name("description").In("query").
-				Model(arrest.ModelFrom[string]()).
+				Model(arrest.ModelFrom[string](doc)).
 				Description("Filter by description (optional)")
 		})
 
-	ledgerResRef := doc.SchemaComponentRef(arrest.ModelFrom[LedgerResponse]()).Ref()
+	ledgerModel := arrest.ModelFrom[LedgerResponse](doc, arrest.AsComponent())
+	ledgerResRef := arrest.SchemaRef(ledgerModel.MappedName(doc.PkgMap))
 	doc.Get("/ledger").
 		Parameters(listAccounts).
 		Response("200", func(r *arrest.Response) {

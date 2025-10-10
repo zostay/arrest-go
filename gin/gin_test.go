@@ -136,7 +136,7 @@ func TestCallMethod_WithOptions(t *testing.T) {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 	}
-	customErrorModel := arrest.ModelFrom[CustomError]()
+	customErrorModel := arrest.ModelFrom[CustomError](arrestDoc)
 
 	doc.Post("/pets").Call(CreatePet,
 		WithCallErrorModel(customErrorModel),

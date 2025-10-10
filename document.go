@@ -256,44 +256,6 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 	return nil
 }
 
-// SchemaComponent adds a schema component to the document. You can then use
-//
-//	arrest.SchemaRef(fqn)
-//
-// to reference this schema in other parts of the document.
-func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
-	d.AddHandler(m)
-
-	if d.DataModel.Model.Components == nil {
-		d.DataModel.Model.Components = &v3.Components{}
-	}
-
-	c := d.DataModel.Model.Components
-	if c.Schemas == nil {
-		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
-	}
-
-	c.Schemas.Set(fqn, m.SchemaProxy)
-
-	for goPkg, sp := range m.ExtractChildRefs() {
-		childFqn := MappedName(goPkg, d.PkgMap)
-		c.Schemas.Set(childFqn, sp)
-	}
-
-	// Remap schema references in the main schema
-	if slices.Contains(m.SchemaProxy.Schema().Type, "object") {
-		remapSchemaRefs(context.TODO(), m.SchemaProxy, d.PkgMap)
-	}
-
-	// Also remap schema references in all child schemas
-	for _, sp := range m.ExtractChildRefs() {
-		if slices.Contains(sp.Schema().Type, "object") {
-			remapSchemaRefs(context.TODO(), sp, d.PkgMap)
-		}
-	}
-
-	return d
-}
 
 // SecuritySchemeComponent adds a security scheme component to the document. You
 // can then use the fqn to reference this schema in other parts of the document.
@@ -312,18 +274,6 @@ func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Docum
 	return d
 }
 
-func (d *Document) SchemaComponentRef(m *Model) *SchemaComponent {
-	d.AddHandler(m)
-
-	fqn := m.MappedName(d.PkgMap)
-
-	d.SchemaComponent(fqn, m)
-
-	return &SchemaComponent{
-		schema: m,
-		ref:    SchemaRef(fqn),
-	}
-}
 
 // SchemaComponents lists all the schema components in the document.
 func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
@@ -339,13 +289,13 @@ func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
 	for pair := range orderedmap.Iterate(ctx, d.DataModel.Model.Components.Schemas) {
 		name, sp := pair.Key(), pair.Value()
 
-		scs = append(scs, &SchemaComponent{
-			schema: &Model{
-				Name:        name,
-				SchemaProxy: sp,
-			},
-			ref: SchemaRef(name),
-		})
+		schema := &Model{
+			Name:        name,
+			SchemaProxy: sp,
+		}
+		ref := SchemaRef(name)
+
+		scs = append(scs, NewSchemaComponent(name, schema, ref))
 	}
 
 	return scs

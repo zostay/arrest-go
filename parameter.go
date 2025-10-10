@@ -32,7 +32,7 @@ func ParameterFromReflect(t reflect.Type) *Parameter {
 		Parameter: &v3.Parameter{},
 	}
 
-	m := ModelFromReflect(t)
+	m := ModelFromReflectOnly(t)
 
 	p.AddHandler(m)
 	p.Parameter.Schema = m.SchemaProxy

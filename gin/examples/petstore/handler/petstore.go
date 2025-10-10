@@ -136,14 +136,14 @@ func BuildDoc(r gin.IRoutes) (*arrestGin.Document, error) {
 		Parameters(listPets).
 		Response("200", func(r *arrest.Response) {
 			r.Description("A list of pets").
-				Header("x-next", arrest.ModelFrom[string](), func(h *arrest.Header) {
+				Header("x-next", arrest.ModelFrom[string](baseDoc), func(h *arrest.Header) {
 					h.Description("A link to the next page of responses")
 				}).
-				Content("application/json", arrest.ModelFrom[Pets]())
+				Content("application/json", arrest.ModelFrom[Pets](baseDoc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](baseDoc))
 		})
 
 	doc.Post("/pets").
@@ -151,11 +151,11 @@ func BuildDoc(r gin.IRoutes) (*arrestGin.Document, error) {
 		Summary("Create a pet").
 		OperationID("createPets").
 		Tags("pets").
-		RequestBody("application/json", arrest.ModelFrom[Pet]()).
+		RequestBody("application/json", arrest.ModelFrom[Pet](baseDoc)).
 		Response("201", func(r *arrest.Response) { r.Description("Null response") }).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](baseDoc))
 		})
 
 	showByPetId := arrest.ParametersFromReflect(reflect.TypeOf(ShowByPetID)).
@@ -172,11 +172,11 @@ func BuildDoc(r gin.IRoutes) (*arrestGin.Document, error) {
 		Parameters(showByPetId).
 		Response("200", func(r *arrest.Response) {
 			r.Description("Expected response to a valid request").
-				Content("application/json", arrest.ModelFrom[Pet]())
+				Content("application/json", arrest.ModelFrom[Pet](baseDoc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](baseDoc))
 		})
 
 	if doc.Err() != nil {
