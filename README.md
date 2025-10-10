@@ -227,7 +227,7 @@ func main() {
 		P(0, func(p *arrest.Parameter) {
 			p.Name("limit").InQuery().Required().
 				Description("maximum number of results to return").
-				Model(arrest.ModelFrom[int32]())
+				Model(arrest.ModelFrom[int32](doc))
 		})
 
 	doc.Get("/pets").
@@ -237,34 +237,34 @@ func main() {
 		Parameters(listPetsParams).
 		Response("200", func(r *arrest.Response) {
 			r.Description("A list of pets").
-				Header("x-next", arrest.ModelFrom[string](), func(h *arrest.Header) {
+				Header("x-next", arrest.ModelFrom[string](doc), func(h *arrest.Header) {
 					h.Description("A link to the next page of responses")
 				}).
-				Content("application/json", arrest.ModelFrom[Pets]())
+				Content("application/json", arrest.ModelFrom[Pets](doc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	doc.Post("/pets").
 		Summary("Create a pet").
 		OperationID("createPets").
 		Tags("pets").
-		RequestBody("application/json", arrest.ModelFrom[Pet]()).
+		RequestBody("application/json", arrest.ModelFrom[Pet](doc)).
 		Response("201", func(r *arrest.Response) {
 			r.Description("Null response")
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	petIdParam := arrest.NParameters(1).
 		P(0, func(p *arrest.Parameter) {
 			p.Name("petId").InPath().Required().
 				Description("The ID of the pet to retrieve").
-				Model(arrest.ModelFrom[string]())
+				Model(arrest.ModelFrom[string](doc))
 		})
 
 	doc.Get("/pets/{petId}").
@@ -274,11 +274,11 @@ func main() {
 		Parameters(petIdParam).
 		Response("200", func(r *arrest.Response) {
 			r.Description("Expected response to a valid request").
-				Content("application/json", arrest.ModelFrom[Pet]())
+				Content("application/json", arrest.ModelFrom[Pet](doc))
 		}).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
-				Content("application/json", arrest.ModelFrom[Error]())
+				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
 	if doc.Err() != nil {
@@ -351,7 +351,7 @@ paths:
 		// Add a new response to existing operations
 		op.Response("400", func(r *arrest.Response) {
 			r.Description("Bad Request").
-				Content("application/json", arrest.ModelFrom[map[string]string]())
+				Content("application/json", arrest.ModelFrom[map[string]string](doc))
 		})
 
 		// Add tags to existing operations
@@ -379,14 +379,14 @@ paths:
 		Summary("Create a new user").
 		OperationID("createUser").
 		Tags("users", "api").
-		RequestBody("application/json", arrest.ModelFrom[CreateUserRequest]()).
+		RequestBody("application/json", arrest.ModelFrom[CreateUserRequest](doc)).
 		Response("201", func(r *arrest.Response) {
 			r.Description("User created successfully").
-				Content("application/json", arrest.ModelFrom[User]())
+				Content("application/json", arrest.ModelFrom[User](doc))
 		}).
 		Response("400", func(r *arrest.Response) {
 			r.Description("Invalid input").
-				Content("application/json", arrest.ModelFrom[map[string]string]())
+				Content("application/json", arrest.ModelFrom[map[string]string](doc))
 		})
 
 	// Add new paths completely
@@ -399,16 +399,16 @@ paths:
 				P(0, func(p *arrest.Parameter) {
 					p.Name("id").InPath().Required().
 						Description("User ID").
-						Model(arrest.ModelFrom[int64]())
+						Model(arrest.ModelFrom[int64](doc))
 				}),
 		).
 		Response("200", func(r *arrest.Response) {
 			r.Description("User found").
-				Content("application/json", arrest.ModelFrom[User]())
+				Content("application/json", arrest.ModelFrom[User](doc))
 		}).
 		Response("404", func(r *arrest.Response) {
 			r.Description("User not found").
-				Content("application/json", arrest.ModelFrom[map[string]string]())
+				Content("application/json", arrest.ModelFrom[map[string]string](doc))
 		})
 
 	// Update document metadata
@@ -632,7 +632,7 @@ doc.Get("/path").Summary("Get a thing").
     ).
     Response("200", func (r *arrest.Response) {
         r.Description("The thing").
-            Content("application/json", arrest.ModelFrom[Thing]())
+            Content("application/json", arrest.ModelFrom[Thing](doc))
     })
 ```
 

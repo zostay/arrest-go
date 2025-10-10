@@ -184,8 +184,38 @@ When working with schema components:
 - Package mapping is applied during component registration in `SchemaComponent()`
 - The `remapSchemaRefs()` function recursively updates all `$ref` values in schemas
 
+### Component Registration (Updated API)
+**BREAKING CHANGE**: Component registration has been completely redesigned for explicit control:
+
+**OLD (Removed)**:
+```go
+// This API no longer exists
+errRef := doc.SchemaComponentRef(arrest.ModelFrom[Error]()).Ref()
+```
+
+**NEW (Current)**:
+```go
+// Explicit component registration
+errModel := arrest.ModelFrom[Error](doc, arrest.AsComponent()).
+    Description("An error response.")
+errRef := arrest.SchemaRef(errModel.MappedName(doc.PkgMap))
+
+// Or with custom component name
+model := arrest.ModelFrom[User](doc, arrest.WithComponentName("UserModel"))
+```
+
+**Key Changes**:
+- `ModelFrom[T]()` → `ModelFrom[T](doc, opts...)` - Document context now required
+- Components only registered when `AsComponent()` option is used
+- Child references only registered as components when parent is a component
+- Fixed bug where all models were automatically registered as components
+
 ### Recent Changes
 Recent work has focused on:
+- **Breaking Change**: `ModelFrom` now requires document context: `ModelFrom[T]()` → `ModelFrom[T](doc, opts...)`
+- **New Component Registration**: Added `AsComponent()` and `WithComponentName()` options for explicit component registration
+- **Fixed Component Registration Bug**: Components are now only registered when explicitly requested with `AsComponent()`
+- **Removed `SchemaComponentRef()`**: Replaced with `ModelFrom[T](doc, AsComponent())` + `SchemaRef()`
 - Implementing the Call method for automatic handler generation from controller functions
 - Improving recursive type handling and ensuring package mapping is correctly applied to all schema references
 - Adding automatic parameter extraction and request body inference for gin operations
