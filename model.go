@@ -416,9 +416,9 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
 	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs}, err)
 	if m.SchemaProxy == nil {
-		panic("nope")
+		panic(fmt.Sprintf("failed to create SchemaProxy for type %s: got nil", name))
 	} else if m.SchemaProxy.Schema() == nil {
-		panic("noper")
+		panic(fmt.Sprintf("SchemaProxy for type %s returned nil Schema", name))
 	}
 
 	// Add to document handlers
