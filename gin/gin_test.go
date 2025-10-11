@@ -490,3 +490,107 @@ func TestParameterGeneration(t *testing.T) {
 	assert.Contains(t, spec, "name: type")
 	assert.Contains(t, spec, "in: query")
 }
+
+func TestCallMethod_WithRequestComponent(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test with request component registration
+	doc.Post("/pets").Call(CreatePet, WithRequestComponent())
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes request component
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "components:")
+	assert.Contains(t, spec, "schemas:")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.CreatePetRequest:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
+}
+
+func TestCallMethod_WithResponseComponent(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test with response component registration
+	doc.Post("/pets").Call(CreatePet, WithResponseComponent())
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes response component
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "components:")
+	assert.Contains(t, spec, "schemas:")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.Pet:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
+}
+
+func TestCallMethod_WithComponents(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test with both request and response component registration
+	doc.Post("/pets").Call(CreatePet, WithComponents())
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes both components
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "components:")
+	assert.Contains(t, spec, "schemas:")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.CreatePetRequest:")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.Pet:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
+}
+
+func TestCallMethod_WithoutComponents(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test without component registration (default behavior)
+	doc.Post("/pets").Call(CreatePet)
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec does not include components (inline schemas)
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	// Should not have component references, but should have inline schemas
+	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
+	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
+	// But should still have the schema properties inline
+	assert.Contains(t, spec, "name:")
+	assert.Contains(t, spec, "type: string")
+}

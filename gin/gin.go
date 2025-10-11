@@ -181,8 +181,10 @@ type CallOption func(*callOptions)
 
 // callOptions holds configuration for the Call method.
 type callOptions struct {
-	errorModels     []*arrest.Model
-	panicProtection bool
+	errorModels        []*arrest.Model
+	panicProtection    bool
+	requestComponent   bool
+	responseComponent  bool
 }
 
 // WithCallErrorModel adds a custom error model to the operation.
@@ -198,5 +200,30 @@ func WithCallErrorModel(errModel *arrest.Model) CallOption {
 func WithPanicProtection() CallOption {
 	return func(o *callOptions) {
 		o.panicProtection = true
+	}
+}
+
+// WithRequestComponent enables component registration for the request object.
+// When enabled, the request type will be registered as a reusable component.
+func WithRequestComponent() CallOption {
+	return func(o *callOptions) {
+		o.requestComponent = true
+	}
+}
+
+// WithResponseComponent enables component registration for the response object.
+// When enabled, the response type will be registered as a reusable component.
+func WithResponseComponent() CallOption {
+	return func(o *callOptions) {
+		o.responseComponent = true
+	}
+}
+
+// WithComponents is a shorthand for enabling both request and response component registration.
+// Equivalent to using both WithRequestComponent() and WithResponseComponent().
+func WithComponents() CallOption {
+	return func(o *callOptions) {
+		o.requestComponent = true
+		o.responseComponent = true
 	}
 }

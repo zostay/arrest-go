@@ -110,6 +110,12 @@ func (m *Model) OneOf(enums ...Enumeration) *Model {
 	return m
 }
 
+// sanitizeComponentName replaces slashes with periods to conform to OpenAPI 3.0
+// schema component name requirements: [A-Za-z0-9_.-]
+func sanitizeComponentName(name string) string {
+	return strings.ReplaceAll(name, "/", ".")
+}
+
 func MappedName(typName string, pkgMap []PackageMap) string {
 	if typName == "" {
 		return ""
@@ -118,11 +124,11 @@ func MappedName(typName string, pkgMap []PackageMap) string {
 	for _, item := range pkgMap {
 		oasPkg, goPkg := item.OpenAPIName, item.GoName
 		if trimName := strings.TrimPrefix(typName, goPkg); trimName != typName && trimName[0] == '.' {
-			return oasPkg + trimName
+			return sanitizeComponentName(oasPkg + trimName)
 		}
 	}
 
-	return typName
+	return sanitizeComponentName(typName)
 }
 
 func (m *Model) MappedName(pkgMap []PackageMap) string {
@@ -522,8 +528,9 @@ func ModelFromOnly[T any]() *Model {
 }
 
 func SchemaRef(fqn string) *Model {
+	sanitizedName := sanitizeComponentName(fqn)
 	return &Model{
 		Name:        fqn,
-		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", fqn)),
+		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", sanitizedName)),
 	}
 }
