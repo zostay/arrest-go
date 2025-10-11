@@ -512,8 +512,8 @@ func TestCallMethod_WithRequestComponent(t *testing.T) {
 	spec := string(openAPI)
 	assert.Contains(t, spec, "components:")
 	assert.Contains(t, spec, "schemas:")
-	assert.Contains(t, spec, "github.com/zostay/arrest-go/gin.CreatePetRequest:")
-	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.CreatePetRequest'")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.CreatePetRequest:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
 }
 
 func TestCallMethod_WithResponseComponent(t *testing.T) {
@@ -537,8 +537,8 @@ func TestCallMethod_WithResponseComponent(t *testing.T) {
 	spec := string(openAPI)
 	assert.Contains(t, spec, "components:")
 	assert.Contains(t, spec, "schemas:")
-	assert.Contains(t, spec, "github.com/zostay/arrest-go/gin.Pet:")
-	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.Pet'")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.Pet:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
 }
 
 func TestCallMethod_WithComponents(t *testing.T) {
@@ -562,10 +562,10 @@ func TestCallMethod_WithComponents(t *testing.T) {
 	spec := string(openAPI)
 	assert.Contains(t, spec, "components:")
 	assert.Contains(t, spec, "schemas:")
-	assert.Contains(t, spec, "github.com/zostay/arrest-go/gin.CreatePetRequest:")
-	assert.Contains(t, spec, "github.com/zostay/arrest-go/gin.Pet:")
-	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.CreatePetRequest'")
-	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.Pet'")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.CreatePetRequest:")
+	assert.Contains(t, spec, "github.com.zostay.arrest-go.gin.Pet:")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
+	assert.Contains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
 }
 
 func TestCallMethod_WithoutComponents(t *testing.T) {
@@ -588,8 +588,8 @@ func TestCallMethod_WithoutComponents(t *testing.T) {
 
 	spec := string(openAPI)
 	// Should not have component references, but should have inline schemas
-	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.CreatePetRequest'")
-	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com/zostay/arrest-go/gin.Pet'")
+	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.CreatePetRequest'")
+	assert.NotContains(t, spec, "$ref: '#/components/schemas/github.com.zostay.arrest-go.gin.Pet'")
 	// But should still have the schema properties inline
 	assert.Contains(t, spec, "name:")
 	assert.Contains(t, spec, "type: string")
