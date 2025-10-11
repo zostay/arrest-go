@@ -59,12 +59,6 @@ func makeName(refName string, t reflect.Type, defaultSuffix string) string {
 	}
 }
 
-func (m *refMapper) makeRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
-	name := makeName(refName, t, "")
-	m.makeRefs[name] = sp
-	return "#/components/schemas/" + name
-}
-
 func (m *refMapper) makeComponentRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
 	name := makeName(refName, t, "")
 	m.makeRefs[name] = sp
@@ -224,7 +218,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 					}
 
-					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fElemSchema)
+					elemRef := makeRefs.makeComponentRef(elemRefName, fType.Elem(), fElemSchema)
 					itemSchema := base.CreateSchemaProxyRef(elemRef)
 					fSchema = base.CreateSchemaProxy(&base.Schema{
 						Type:  []string{"array"},

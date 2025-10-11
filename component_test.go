@@ -9,10 +9,15 @@ import (
 )
 
 type TestReq struct {
-	Test TestType `json:"test" openapi:",refName=TestType"`
+	Test     TestType    `json:"test" openapi:",refName=TestType"`
+	AlsoTest []Test2Type `json:"alsoTest" openapi:",elemRefName=Test2Type"`
 }
 
 type TestType struct {
+	Field string `json:"field"`
+}
+
+type Test2Type struct {
 	Field string `json:"field"`
 }
 
@@ -33,9 +38,18 @@ paths:
               properties:
                 test:
                   $ref: '#/components/schemas/test.v1.TestType'
+                alsoTest:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/test.v1.Test2Type'
 components:
   schemas:
     test.v1.TestType:
+      type: object
+      properties:
+        field:
+          type: string
+    test.v1.Test2Type:
       type: object
       properties:
         field:
