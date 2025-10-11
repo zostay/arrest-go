@@ -6,9 +6,14 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/zostay/arrest-go"
 	arrestGin "github.com/zostay/arrest-go/gin"
 )
+
+type CreatePetRequest struct {
+	Pet Pet `json:"pet" openapi:",refName=Pet"`
+}
 
 type Pet struct {
 	ID   int64  `json:"id"`
@@ -119,9 +124,15 @@ func BuildDoc(r gin.IRoutes) (*arrestGin.Document, error) {
 		return nil, err
 	}
 
+	baseDoc.Version("1.0.0")
+
 	doc := arrestGin.NewDocument(baseDoc, r)
 
 	doc.AddServer("http://petstore.swagger.io/v1")
+	doc.PackageMap(
+		"pet.v1", "github.com/zostay/arrest-go/gin/examples/petstore/handler",
+		"pet.v1", "command-line-arguments",
+	)
 
 	listPets := arrest.ParametersFromReflect(reflect.TypeOf(ListPets)).
 		P(0, func(p *arrest.Parameter) {
@@ -151,7 +162,7 @@ func BuildDoc(r gin.IRoutes) (*arrestGin.Document, error) {
 		Summary("Create a pet").
 		OperationID("createPets").
 		Tags("pets").
-		RequestBody("application/json", arrest.ModelFrom[Pet](baseDoc)).
+		RequestBody("application/json", arrest.ModelFrom[CreatePetRequest](baseDoc)).
 		Response("201", func(r *arrest.Response) { r.Description("Null response") }).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
