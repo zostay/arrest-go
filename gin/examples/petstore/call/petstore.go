@@ -37,9 +37,7 @@ func (e *Error) Error() string {
 
 // CreatePetRequest represents the input for creating a pet
 type CreatePetRequest struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Tag  string `json:"tag"`
+	Pet  Pet    `json:"pet" openapi:",refName=Pet"`
 	Type string `json:"type" openapi:",in=query"`
 }
 
@@ -69,8 +67,8 @@ var nextID int64 = 4
 func CreatePet(ctx context.Context, req CreatePetRequest) (*Pet, error) {
 	pet := Pet{
 		ID:   nextID,
-		Name: req.Name,
-		Tag:  req.Tag,
+		Name: req.Pet.Name,
+		Tag:  req.Pet.Tag,
 	}
 	nextID++
 	pets = append(pets, pet)
@@ -118,6 +116,9 @@ func BuildDoc(router gin.IRoutes) (*arrestgin.Document, error) {
 	arrestDoc.Version("1.0.0")
 	arrestDoc.Description("Demonstration of the Call method that automatically generates handlers")
 	arrestDoc.AddServer("http://petstore.swagger.io/v1")
+	arrestDoc.PackageMap(
+		"pet.v1", "github.com/zostay/arrest-go/gin/examples/petstore/call",
+	)
 
 	// Create gin router and document
 	doc := arrestgin.NewDocument(arrestDoc, router)

@@ -75,13 +75,8 @@ paths:
             schema:
               type: object
               properties:
-                id:
-                  type: integer
-                  format: int64
-                name:
-                  type: string
-                tag:
-                  type: string
+                pet:
+                  $ref: '#/components/schemas/pet.v1.Pet'
               description: CreatePetRequest represents the input for creating a pet
       responses:
         default:
@@ -163,3 +158,16 @@ paths:
                   tag:
                     type: string
                 description: Pet represents a pet in our system
+components:
+  schemas:
+    pet.v1.Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        tag:
+          type: string
+      description: Pet represents a pet in our system
