@@ -73,13 +73,16 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		// For POST, PUT, etc., use the input type as request body (unless it has only query/path params)
 		if hasBodyFields(inputType) {
 			// Use ModelFromReflect since we have the reflect.Type
-			inputModel := arrest.ModelFromReflect(inputType, o.Document)
-			o.RequestBody("application/json", inputModel)
+			if options.requestComponent {
+				inputModel := arrest.ModelFromReflect(inputType, o.Document, arrest.AsComponent())
+				inputRef := arrest.SchemaRef(inputModel.MappedName(o.Document.PkgMap))
+				o.RequestBody("application/json", inputRef)
+			} else {
+				inputModel := arrest.ModelFromReflect(inputType, o.Document)
+				o.RequestBody("application/json", inputModel)
+			}
 		}
 	}
-
-	// Store output model for later use if needed
-	outputModel := arrest.ModelFromReflect(outputType, o.Document)
 
 	// Configure success response with output model
 	// Only add if no responses have been configured yet
@@ -101,8 +104,16 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 				}
 			}
 
-			r.Description(description).
-				Content("application/json", outputModel)
+			if options.responseComponent {
+				outputModel := arrest.ModelFromReflect(outputType, o.Document, arrest.AsComponent())
+				outputRef := arrest.SchemaRef(outputModel.MappedName(o.Document.PkgMap))
+				r.Description(description).
+					Content("application/json", outputRef)
+			} else {
+				outputModel := arrest.ModelFromReflect(outputType, o.Document)
+				r.Description(description).
+					Content("application/json", outputModel)
+			}
 		})
 	}
 
