@@ -59,12 +59,6 @@ func makeName(refName string, t reflect.Type, defaultSuffix string) string {
 	}
 }
 
-func (m *refMapper) makeRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
-	name := makeName(refName, t, "")
-	m.makeRefs[name] = sp
-	return "#/components/schemas/" + name
-}
-
 func (m *refMapper) makeComponentRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
 	name := makeName(refName, t, "")
 	m.makeRefs[name] = sp
