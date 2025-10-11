@@ -224,7 +224,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 					}
 
-					elemRef := makeRefs.makeRef(elemRefName, fType.Elem(), fElemSchema)
+					elemRef := makeRefs.makeComponentRef(elemRefName, fType.Elem(), fElemSchema)
 					itemSchema := base.CreateSchemaProxyRef(elemRef)
 					fSchema = base.CreateSchemaProxy(&base.Schema{
 						Type:  []string{"array"},
