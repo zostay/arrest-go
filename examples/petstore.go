@@ -7,6 +7,10 @@ import (
 	"github.com/zostay/arrest-go"
 )
 
+type CreatePetRequest struct {
+	Pet Pet `json:"pet" openapi:",refName=Pet"`
+}
+
 type Pet struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
@@ -46,6 +50,10 @@ func BuildDoc() (*arrest.Document, error) {
 	}
 
 	doc.AddServer("http://petstore.swagger.io/v1")
+	doc.PackageMap(
+		"pet.v1", "github.com/zostay/arrest-go/examples",
+		"pet.v1", "main",
+	)
 
 	listPets := arrest.ParametersFromReflect(reflect.TypeOf(ListPets)).
 		P(0, func(p *arrest.Parameter) {
@@ -69,11 +77,13 @@ func BuildDoc() (*arrest.Document, error) {
 				Content("application/json", arrest.ModelFrom[Error](doc))
 		})
 
+	createPetModel := arrest.ModelFrom[CreatePetRequest](doc, arrest.AsComponent())
+
 	doc.Post("/pets").
 		Summary("Create a pet").
 		OperationID("createPets").
 		Tags("pets").
-		RequestBody("application/json", arrest.ModelFrom[Pet](doc)).
+		RequestBody("application/json", arrest.SchemaRef(createPetModel.MappedName(doc.PkgMap))).
 		Response("201", func(r *arrest.Response) { r.Description("Null response") }).
 		Response("default", func(r *arrest.Response) {
 			r.Description("unexpected error").
