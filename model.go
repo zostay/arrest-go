@@ -32,14 +32,16 @@ type Enumeration struct {
 }
 
 type refMapper struct {
-	makeRefs  map[string]*base.SchemaProxy
-	inProcess map[reflect.Type]bool
+	makeRefs      map[string]*base.SchemaProxy
+	componentRefs map[string]*base.SchemaProxy // refs that should be registered as components
+	inProcess     map[reflect.Type]bool
 }
 
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
-		makeRefs:  make(map[string]*base.SchemaProxy),
-		inProcess: make(map[reflect.Type]bool),
+		makeRefs:      make(map[string]*base.SchemaProxy),
+		componentRefs: make(map[string]*base.SchemaProxy),
+		inProcess:     make(map[reflect.Type]bool),
 	}
 }
 
@@ -63,13 +65,21 @@ func (m *refMapper) makeRef(refName string, t reflect.Type, sp *base.SchemaProxy
 	return "#/components/schemas/" + name
 }
 
+func (m *refMapper) makeComponentRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
+	name := makeName(refName, t, "")
+	m.makeRefs[name] = sp
+	m.componentRefs[name] = sp
+	return "#/components/schemas/" + name
+}
+
 // Model provides DSL methods for creating OpenAPI schema objects based on Go
 // types.
 type Model struct {
 	Name        string
 	SchemaProxy *base.SchemaProxy
 
-	makeRefs map[string]*base.SchemaProxy
+	makeRefs      map[string]*base.SchemaProxy
+	componentRefs map[string]*base.SchemaProxy
 
 	ErrHelper
 }
@@ -132,6 +142,10 @@ func (m *Model) Description(description string) *Model {
 
 func (m *Model) ExtractChildRefs() map[string]*base.SchemaProxy {
 	return m.makeRefs
+}
+
+func (m *Model) ExtractComponentRefs() map[string]*base.SchemaProxy {
+	return m.componentRefs
 }
 
 func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
@@ -220,7 +234,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 			}
 
 			if refName := info.RefName(); refName != "" {
-				ref := makeRefs.makeRef(refName, fType, fSchema)
+				ref := makeRefs.makeComponentRef(refName, fType, fSchema)
 				fSchema = base.CreateSchemaProxyRef(ref)
 			}
 		}
@@ -414,7 +428,7 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
-	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs}, err)
+	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
 	if m.SchemaProxy == nil {
 		panic(fmt.Sprintf("failed to create SchemaProxy for type %s: got nil", name))
 	} else if m.SchemaProxy.Schema() == nil {
@@ -431,6 +445,25 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	for _, sp := range m.ExtractChildRefs() {
 		if slices.Contains(sp.Schema().Type, "object") {
 			remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
+		}
+	}
+
+	// Register component references (from refName tags) automatically
+	if len(m.ExtractComponentRefs()) > 0 {
+		if doc.DataModel.Model.Components == nil {
+			doc.DataModel.Model.Components = &v3.Components{}
+		}
+		c := doc.DataModel.Model.Components
+		if c.Schemas == nil {
+			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
+		}
+		for goPkg, sp := range m.ExtractComponentRefs() {
+			componentFqn := MappedName(goPkg, doc.PkgMap)
+			// Apply package mapping to component schemas
+			if slices.Contains(sp.Schema().Type, "object") {
+				remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
+			}
+			c.Schemas.Set(componentFqn, sp)
 		}
 	}
 
@@ -478,7 +511,7 @@ func ModelFromReflectOnly(t reflect.Type) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
 	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
-	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs}, err)
+	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
 	if m.SchemaProxy == nil {
 		panic("nope")
 	} else if m.SchemaProxy.Schema() == nil {
