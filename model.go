@@ -37,12 +37,191 @@ type refMapper struct {
 	inProcess     map[reflect.Type]bool
 }
 
+// PolymorphicField represents a field that participates in polymorphic composition
+type PolymorphicField struct {
+	Field           reflect.StructField
+	Type            reflect.Type
+	CompositionType string // oneOf, anyOf, allOf
+	Mapping         string // discriminator mapping alias
+	RefName         string // component reference name if any
+	IsInline        bool
+}
+
+// PolymorphicInfo contains information about a polymorphic struct
+type PolymorphicInfo struct {
+	DiscriminatorField reflect.StructField
+	DefaultMapping     string
+	CompositionType    string // oneOf, anyOf, allOf
+	Fields             []PolymorphicField
+}
+
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
 		makeRefs:      make(map[string]*base.SchemaProxy),
 		componentRefs: make(map[string]*base.SchemaProxy),
 		inProcess:     make(map[reflect.Type]bool),
 	}
+}
+
+// detectPolymorphicStruct examines a struct type to determine if it uses polymorphic tags
+func detectPolymorphicStruct(t reflect.Type) (*PolymorphicInfo, bool) {
+	var discriminatorField *reflect.StructField
+	var defaultMapping string
+	var compositionType string
+	var polymorphFields []PolymorphicField
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.PkgPath != "" {
+			continue // skip unexported fields
+		}
+
+		info := NewTagInfo(field.Tag)
+
+		// Check for discriminator field
+		if info.IsDiscriminator() {
+			if discriminatorField != nil {
+				// Multiple discriminators not allowed
+				return nil, false
+			}
+			discriminatorField = &field
+			defaultMapping = info.GetDefaultMapping()
+		}
+
+		// Check for polymorphic composition fields
+		fieldCompositionType := info.GetPolymorphType()
+		if fieldCompositionType != "" {
+			if compositionType == "" {
+				compositionType = fieldCompositionType
+			} else if compositionType != fieldCompositionType {
+				// Mixed composition types not allowed
+				return nil, false
+			}
+
+			fieldType := field.Type
+			// Handle pointer types
+			if fieldType.Kind() == reflect.Ptr {
+				fieldType = fieldType.Elem()
+			}
+
+			polymorphFields = append(polymorphFields, PolymorphicField{
+				Field:           field,
+				Type:            fieldType,
+				CompositionType: fieldCompositionType,
+				Mapping:         info.GetMapping(),
+				RefName:         info.RefName(),
+				IsInline:        info.IsInline(),
+			})
+		}
+	}
+
+	// Must have both discriminator and polymorphic fields to be valid
+	if discriminatorField == nil || len(polymorphFields) == 0 {
+		return nil, false
+	}
+
+	return &PolymorphicInfo{
+		DiscriminatorField: *discriminatorField,
+		DefaultMapping:     defaultMapping,
+		CompositionType:    compositionType,
+		Fields:             polymorphFields,
+	}, true
+}
+
+// buildPolymorphicSchema creates a polymorphic schema based on PolymorphicInfo
+func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	// Create schemas for each polymorphic field
+	var schemas []*base.SchemaProxy
+	mappingEntries := make(map[string]string)
+
+	for _, field := range info.Fields {
+		var fieldSchema *base.SchemaProxy
+		var err error
+
+		if field.IsInline || field.RefName != "" {
+			// For inline fields or fields with refName, create the schema directly
+			fieldSchema, err = makeSchemaProxy(field.Type, makeRefs, skipDoc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create schema for polymorphic field %s: %v", field.Field.Name, err)
+			}
+		} else {
+			// For non-inline, non-ref fields, create a schema with the field as a property
+			fieldProps := orderedmap.New[string, *base.SchemaProxy]()
+
+			fSchema, err := makeSchemaProxy(field.Type, makeRefs, skipDoc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create schema for polymorphic field %s: %v", field.Field.Name, err)
+			}
+
+			fieldName := field.Field.Name
+			fieldInfo := NewTagInfo(field.Field.Tag)
+			if fieldInfo.HasName() {
+				fieldName = fieldInfo.Name()
+			}
+
+			fieldProps.Set(fieldName, fSchema)
+			fieldSchema = base.CreateSchemaProxy(&base.Schema{
+				Type:       []string{"object"},
+				Properties: fieldProps,
+			})
+		}
+
+		// Handle component references
+		if field.RefName != "" {
+			ref := makeRefs.makeComponentRef(field.RefName, field.Type, fieldSchema)
+			fieldSchema = base.CreateSchemaProxyRef(ref)
+		}
+
+		schemas = append(schemas, fieldSchema)
+
+		// Add mapping entry if specified
+		if field.Mapping != "" {
+			var refTarget string
+			if field.RefName != "" {
+				refTarget = "#/components/schemas/" + field.RefName
+			} else {
+				// For inline schemas, we'll need to create a component ref
+				typeName := makeName("", field.Type, "")
+				refTarget = "#/components/schemas/" + typeName
+			}
+			mappingEntries[field.Mapping] = refTarget
+		}
+	}
+
+	// Create the polymorphic schema
+	var schema *base.Schema
+	switch info.CompositionType {
+	case "oneOf":
+		schema = &base.Schema{OneOf: schemas}
+	case "anyOf":
+		schema = &base.Schema{AnyOf: schemas}
+	case "allOf":
+		schema = &base.Schema{AllOf: schemas}
+	default:
+		return nil, fmt.Errorf("unsupported composition type: %s", info.CompositionType)
+	}
+
+	// Add discriminator if we have mappings or default mapping
+	if len(mappingEntries) > 0 || info.DefaultMapping != "" {
+		discriminatorFieldName := info.DiscriminatorField.Name
+		discriminatorInfo := NewTagInfo(info.DiscriminatorField.Tag)
+		if discriminatorInfo.HasName() {
+			discriminatorFieldName = discriminatorInfo.Name()
+		}
+
+		mapping := orderedmap.New[string, string]()
+		for alias, ref := range mappingEntries {
+			mapping.Set(alias, ref)
+		}
+
+		schema.Discriminator = &base.Discriminator{
+			PropertyName:   discriminatorFieldName,
+			DefaultMapping: info.DefaultMapping,
+			Mapping:        mapping,
+		}
+	}
+
+	return base.CreateSchemaProxy(schema), nil
 }
 
 func makeName(refName string, t reflect.Type, defaultSuffix string) string {
@@ -177,6 +356,11 @@ func (m *Model) ExtractComponentRefs() map[string]*base.SchemaProxy {
 }
 
 func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	// Check if this is a polymorphic struct first
+	if polymorphInfo, isPolymorphic := detectPolymorphicStruct(t); isPolymorphic {
+		return buildPolymorphicSchema(polymorphInfo, makeRefs, skipDoc)
+	}
+
 	doc := ""
 	fieldDocs := map[string]string{}
 	if !skipDoc {
