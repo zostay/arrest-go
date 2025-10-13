@@ -181,10 +181,10 @@ type CallOption func(*callOptions)
 
 // callOptions holds configuration for the Call method.
 type callOptions struct {
-	errorModels        []*arrest.Model
-	panicProtection    bool
-	requestComponent   bool
-	responseComponent  bool
+	errorModels       []*arrest.Model
+	panicProtection   bool
+	requestComponent  bool
+	responseComponent bool
 }
 
 // WithCallErrorModel adds a custom error model to the operation.

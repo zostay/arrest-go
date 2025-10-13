@@ -140,6 +140,34 @@ func (m *Model) Description(description string) *Model {
 	return m
 }
 
+// Discriminator configures the discriminator for polymorphic schemas.
+// It takes a property name used to discriminate between schemas, a default mapping,
+// and optional alias-to-value mapping pairs.
+// The mappings parameter should contain pairs of strings: alias1, value1, alias2, value2, etc.
+func (m *Model) Discriminator(propertyName, defaultMapping string, mappings ...string) *Model {
+	if len(mappings)%2 != 0 {
+		return withErr(m, errors.New("discriminator mappings must be provided in pairs (alias, value)"))
+	}
+
+	// Create the mapping from the variadic arguments
+	mapping := orderedmap.New[string, string]()
+	for i := 0; i < len(mappings); i += 2 {
+		alias := mappings[i]
+		value := mappings[i+1]
+		mapping.Set(alias, value)
+	}
+
+	// Create the discriminator
+	discriminator := &base.Discriminator{
+		PropertyName:   propertyName,
+		DefaultMapping: defaultMapping,
+		Mapping:        mapping,
+	}
+
+	m.SchemaProxy.Schema().Discriminator = discriminator
+	return m
+}
+
 func (m *Model) ExtractChildRefs() map[string]*base.SchemaProxy {
 	return m.makeRefs
 }
@@ -533,4 +561,163 @@ func SchemaRef(fqn string) *Model {
 		Name:        fqn,
 		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", sanitizedName)),
 	}
+}
+
+// OneOfTheseModels creates a model that represents a oneOf composition of the provided models.
+// This is used for polymorphic schemas where exactly one of the provided schemas should match.
+func OneOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "OneOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for OneOf
+	oneOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		oneOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		OneOf: oneOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "OneOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
+}
+
+// AnyOfTheseModels creates a model that represents an anyOf composition of the provided models.
+// This is used for polymorphic schemas where any of the provided schemas can match.
+func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "AnyOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for AnyOf
+	anyOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		anyOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		AnyOf: anyOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "AnyOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
+}
+
+// AllOfTheseModels creates a model that represents an allOf composition of the provided models.
+// This is used for polymorphic schemas where all of the provided schemas must match.
+func AllOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "AllOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for AllOf
+	allOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		allOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		AllOf: allOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "AllOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
 }
