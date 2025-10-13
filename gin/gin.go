@@ -154,6 +154,15 @@ func (o *Operation) Call(controller interface{}, opts ...CallOption) *Operation 
 		opt(options)
 	}
 
+	// Validate option compatibility
+	if len(options.errorModels) > 0 && len(options.replaceErrorModels) > 0 {
+		return withErr(o, fmt.Errorf("WithCallErrorModel and ReplaceCallErrorModel are mutually exclusive"))
+	}
+
+	if len(options.replaceErrorModels) > 0 && options.errorHandler == nil {
+		return withErr(o, fmt.Errorf("ReplaceCallErrorModel requires WithErrorHandler to be set"))
+	}
+
 	// Validate controller function signature
 	controllerType := reflect.TypeOf(controller)
 	if err := o.validateControllerSignature(controllerType); err != nil {
@@ -185,11 +194,12 @@ type CallOption func(*callOptions)
 
 // callOptions holds configuration for the Call method.
 type callOptions struct {
-	errorModels       []*arrest.Model
-	errorHandler      ErrorHandlerFunc
-	panicProtection   bool
-	requestComponent  bool
-	responseComponent bool
+	errorModels        []*arrest.Model
+	replaceErrorModels []*arrest.Model
+	errorHandler       ErrorHandlerFunc
+	panicProtection    bool
+	requestComponent   bool
+	responseComponent  bool
 }
 
 // WithCallErrorModel adds a custom error model to the operation.
@@ -207,6 +217,15 @@ func WithCallErrorModel(errModel *arrest.Model) CallOption {
 func WithErrorHandler(handler ErrorHandlerFunc) CallOption {
 	return func(o *callOptions) {
 		o.errorHandler = handler
+	}
+}
+
+// ReplaceCallErrorModel replaces the default error models completely with custom error models.
+// This option is mutually exclusive with WithCallErrorModel and requires WithErrorHandler to be set.
+// Multiple models will be combined using arrest.OneOf().
+func ReplaceCallErrorModel(errModel *arrest.Model) CallOption {
+	return func(o *callOptions) {
+		o.replaceErrorModels = append(o.replaceErrorModels, errModel)
 	}
 }
 
