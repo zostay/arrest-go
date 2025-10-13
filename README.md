@@ -531,11 +531,63 @@ doc.Get("/api/users").Call(GetUsers) // Handler registered automatically!
 
 ### Call Method Options
 
+The `Call` method supports various options to customize behavior:
+
 ```go
-doc.Post("/pets").
-    Call(CreatePet,
-    WithCallErrorModel(customErrorModel), // Custom error responses
+// Error handling options
+doc.Post("/pets").Call(CreatePet,
+    WithCallErrorModel(customErrorModel),     // Add custom error model (combines with default)
+    ReplaceCallErrorModel(customErrorModel),  // Replace default error models completely
+    WithErrorHandler(customErrorHandler),     // Custom error processing function
+
+    // Other options
+    WithPanicProtection(),                    // Catch panics and convert to errors
+    WithRequestComponent(),                   // Register request type as reusable component
+    WithResponseComponent(),                  // Register response type as reusable component
+    WithComponents(),                         // Shorthand for both request and response components
 )
+```
+
+#### Error Handling Options
+
+**`WithCallErrorModel(model)`** - Adds custom error models alongside the default `ErrorResponse`:
+- Multiple calls add multiple error models
+- Creates `oneOf: [ErrorResponse, customModel1, customModel2...]` in OpenAPI spec
+- Default error handler still available for standard errors
+
+**`ReplaceCallErrorModel(model)`** - Completely replaces default error models:
+- Mutually exclusive with `WithCallErrorModel()`
+- Requires `WithErrorHandler()` to be set
+- Creates custom-only error models in OpenAPI spec
+- All errors (panics, validation, controller) use custom handler
+
+**`WithErrorHandler(handler)`** - Custom error processing function:
+```go
+customErrorHandler := func(ctx *gin.Context, err error) interface{} {
+    // Return any serializable object
+    return map[string]interface{}{
+        "error_code": "CUSTOM_ERROR",
+        "message":    err.Error(),
+        "timestamp":  time.Now(),
+    }
+}
+```
+
+#### HTTPStatusCoder Interface
+
+Both errors and responses can implement `HTTPStatusCoder` for custom status codes:
+
+```go
+type HTTPStatusCoder interface {
+    HTTPStatusCode() int
+}
+
+type CustomError struct {
+    Message string `json:"message"`
+}
+
+func (e *CustomError) Error() string { return e.Message }
+func (e *CustomError) HTTPStatusCode() int { return http.StatusBadRequest }
 ```
 
 ## Advanced Features

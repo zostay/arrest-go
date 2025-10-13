@@ -175,8 +175,60 @@ doc.Post("/pets").
 - Fields without tags become request body properties
 
 **Options:**
-- `WithCallErrorModel(model)` - Custom error response model
-- `WithPanicProtection()` - Automatic panic recovery
+- `WithCallErrorModel(model)` - Add custom error response model (combines with default ErrorResponse)
+- `ReplaceCallErrorModel(model)` - Replace default error models completely (requires WithErrorHandler)
+- `WithErrorHandler(handler)` - Custom error processing function
+- `WithPanicProtection()` - Automatic panic recovery (now uses custom error handlers)
+- `WithRequestComponent()` - Register request type as reusable component
+- `WithResponseComponent()` - Register response type as reusable component
+- `WithComponents()` - Shorthand for both request and response components
+
+#### Enhanced Error Handling
+
+The gin package now provides comprehensive error handling with two main approaches:
+
+**Augmented Error Handling** (default behavior):
+```go
+// Adds custom error models alongside default ErrorResponse
+doc.Post("/pets").Call(CreatePet,
+    WithCallErrorModel(customErrorModel),
+    // Optional: WithErrorHandler for custom processing
+)
+// OpenAPI: oneOf: [ErrorResponse, customErrorModel]
+```
+
+**Replacement Error Handling** (complete control):
+```go
+// Completely replaces default error handling
+customErrorHandler := func(ctx *gin.Context, err error) interface{} {
+    return &CustomError{Code: "ERR001", Message: err.Error()}
+}
+
+doc.Post("/pets").Call(CreatePet,
+    ReplaceCallErrorModel(customErrorModel),
+    WithErrorHandler(customErrorHandler), // Required
+)
+// OpenAPI: Uses only customErrorModel, no default ErrorResponse
+```
+
+**HTTPStatusCoder Interface**:
+Both errors and responses can implement `HTTPStatusCoder` for custom HTTP status codes:
+```go
+type HTTPStatusCoder interface {
+    HTTPStatusCode() int
+}
+```
+
+**Unified Error Processing**:
+All error scenarios now use the same error handling pipeline:
+- Controller errors: Custom handler processes returned errors
+- Validation errors: Custom handler processes input validation failures
+- Panic recovery: Custom handler processes recovered panics (when `WithPanicProtection()` enabled)
+
+**Validation Rules**:
+- `WithCallErrorModel()` and `ReplaceCallErrorModel()` are mutually exclusive
+- `ReplaceCallErrorModel()` requires `WithErrorHandler()` to be set
+- Violations result in document errors during `Call()` method execution
 
 ### Schema Reference Management
 When working with schema components:
@@ -268,6 +320,14 @@ func CreateAnimal(ctx context.Context, req CreateAnimalRequest) (AnimalResponse,
 
 ### Recent Changes
 Recent work has focused on:
+- **MAJOR: Enhanced Error Handling**: Complete overhaul of error handling in gin Call method
+  - **`ReplaceCallErrorModel()`**: New option to completely replace default error models with custom ones
+  - **`WithErrorHandler()`**: Custom error processing functions for all error scenarios
+  - **`HTTPStatusCoder` Interface**: Allows errors and responses to specify custom HTTP status codes
+  - **Unified Error Processing**: All error scenarios (panics, validation, controller errors) now use consistent handling
+  - **Mutual Exclusivity Validation**: `WithCallErrorModel()` and `ReplaceCallErrorModel()` cannot be used together
+  - **Dependency Validation**: `ReplaceCallErrorModel()` requires `WithErrorHandler()` to be set
+- **Fixed `WithCallErrorModel` Bug**: Now properly combines default `ErrorResponse` with custom error models using `oneOf`
 - **MAJOR: Polymorphic Type Support**: Complete implementation of OpenAPI 3+ polymorphic schemas (oneOf, anyOf, allOf) with discriminator support
 - **Implicit Polymorphic Types**: Struct tag-based polymorphic definition for declarative schema generation
 - **Gin Polymorphic Integration**: Full polymorphic support in gin Call method with `WithPolymorphicError()` option
