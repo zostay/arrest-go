@@ -15,6 +15,11 @@ import (
 	"github.com/zostay/arrest-go"
 )
 
+// HTTPStatusCoder is an interface for objects that can provide their own HTTP status code.
+type HTTPStatusCoder interface {
+	HTTPStatusCode() int
+}
+
 // ErrorResponse represents the standard error response format.
 type ErrorResponse struct {
 	Status  string            `json:"status"`           // always "error"
@@ -229,6 +234,28 @@ func hasBodyFields(inputType reflect.Type) bool {
 	return false
 }
 
+// defaultErrorHandler is the default error handler that checks if the error is an *ErrorResponse
+// and returns it as-is if so. Otherwise, it constructs an internal server error.
+// If the original error implements HTTPStatusCoder, it preserves that interface.
+func defaultErrorHandler(ctx *gin2.Context, err error) interface{} {
+	// Check if the error is already an *ErrorResponse
+	if errResp, ok := err.(*ErrorResponse); ok {
+		return errResp
+	}
+
+	// If the error implements HTTPStatusCoder, return it as-is to preserve the status code
+	if _, ok := err.(HTTPStatusCoder); ok {
+		return err
+	}
+
+	// Construct a new ErrorResponse for other error types
+	return &ErrorResponse{
+		Status:  "error",
+		Type:    "internal",
+		Message: err.Error(),
+	}
+}
+
 // generateHandler creates a gin.HandlerFunc that maps HTTP requests to controller function calls.
 func (o *Operation) generateHandler(controller interface{}, inputType, outputType reflect.Type, options *callOptions) gin2.HandlerFunc {
 	controllerValue := reflect.ValueOf(controller)
@@ -273,17 +300,37 @@ func (o *Operation) generateHandler(controller interface{}, inputType, outputTyp
 		// Check for error
 		if !errValue.IsNil() {
 			err := errValue.Interface().(error)
-			errResp := ErrorResponse{
-				Status:  "error",
-				Type:    "internal",
-				Message: err.Error(),
+
+			// Use custom error handler if provided, otherwise use default
+			var errorHandler ErrorHandlerFunc
+			if options.errorHandler != nil {
+				errorHandler = options.errorHandler
+			} else {
+				errorHandler = defaultErrorHandler
 			}
-			c.JSON(http.StatusInternalServerError, errResp)
+
+			errResp := errorHandler(c, err)
+
+			// Check if the error response implements HTTPStatusCoder
+			statusCode := http.StatusInternalServerError
+			if statusCoder, ok := errResp.(HTTPStatusCoder); ok {
+				statusCode = statusCoder.HTTPStatusCode()
+			}
+
+			c.JSON(statusCode, errResp)
 			return
 		}
 
 		// Return success response
-		c.JSON(http.StatusOK, output.Interface())
+		outputInterface := output.Interface()
+
+		// Check if the response implements HTTPStatusCoder
+		statusCode := http.StatusOK
+		if statusCoder, ok := outputInterface.(HTTPStatusCoder); ok {
+			statusCode = statusCoder.HTTPStatusCode()
+		}
+
+		c.JSON(statusCode, outputInterface)
 	}
 }
 

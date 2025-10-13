@@ -176,12 +176,17 @@ func (o *Operation) Call(controller interface{}, opts ...CallOption) *Operation 
 	return o
 }
 
+// ErrorHandlerFunc is a function that handles errors during request processing.
+// It takes a gin context and an error, and returns an interface{} that will be marshaled as JSON.
+type ErrorHandlerFunc func(ctx *gin.Context, err error) interface{}
+
 // CallOption configures behavior for the Call method.
 type CallOption func(*callOptions)
 
 // callOptions holds configuration for the Call method.
 type callOptions struct {
 	errorModels       []*arrest.Model
+	errorHandler      ErrorHandlerFunc
 	panicProtection   bool
 	requestComponent  bool
 	responseComponent bool
@@ -192,6 +197,16 @@ type callOptions struct {
 func WithCallErrorModel(errModel *arrest.Model) CallOption {
 	return func(o *callOptions) {
 		o.errorModels = append(o.errorModels, errModel)
+	}
+}
+
+// WithErrorHandler sets a custom error handler for the operation.
+// The handler receives the gin context and error, and returns an interface{} to be marshaled as JSON.
+// If not provided, a default error handler will be used that checks for *ErrorResponse and constructs
+// internal server errors for other error types.
+func WithErrorHandler(handler ErrorHandlerFunc) CallOption {
+	return func(o *callOptions) {
+		o.errorHandler = handler
 	}
 }
 
