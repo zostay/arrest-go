@@ -120,9 +120,13 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 	// Configure error response
 	var errorModel *arrest.Model
 	if len(options.errorModels) > 0 {
-		// Use the first custom error model if provided
-		errorModel = options.errorModels[0]
-		// TODO: Implement OneOf functionality for combining multiple error models
+		if len(options.errorModels) == 1 {
+			// Use single custom error model
+			errorModel = options.errorModels[0]
+		} else {
+			// Combine multiple error models using OneOf
+			errorModel = arrest.OneOfTheseModels(o.Document, options.errorModels...)
+		}
 	} else {
 		// Use default error model
 		errorModel = arrest.ModelFrom[ErrorResponse](o.Document)
