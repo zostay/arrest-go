@@ -15,6 +15,11 @@ import (
 	"github.com/zostay/arrest-go"
 )
 
+// HTTPStatusCoder is an interface for objects that can provide their own HTTP status code.
+type HTTPStatusCoder interface {
+	HTTPStatusCode() int
+}
+
 // ErrorResponse represents the standard error response format.
 type ErrorResponse struct {
 	Status  string            `json:"status"`           // always "error"
@@ -119,14 +124,24 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 
 	// Configure error response
 	var errorModel *arrest.Model
-	if len(options.errorModels) > 0 {
-		if len(options.errorModels) == 1 {
-			// Use single custom error model
-			errorModel = options.errorModels[0]
+	if len(options.replaceErrorModels) > 0 {
+		// Replace default error models completely with custom error models
+		if len(options.replaceErrorModels) == 1 {
+			// Use single replace error model
+			errorModel = options.replaceErrorModels[0]
 		} else {
-			// Combine multiple error models using OneOf
-			errorModel = arrest.OneOfTheseModels(o.Document, options.errorModels...)
+			// Combine multiple replace error models using OneOf
+			errorModel = arrest.OneOfTheseModels(o.Document, options.replaceErrorModels...)
 		}
+	} else if len(options.errorModels) > 0 {
+		// Always include the default ErrorResponse along with custom error models
+		defaultErrorModel := arrest.ModelFrom[ErrorResponse](o.Document)
+		allErrorModels := make([]*arrest.Model, 0, len(options.errorModels)+1)
+		allErrorModels = append(allErrorModels, defaultErrorModel)
+		allErrorModels = append(allErrorModels, options.errorModels...)
+
+		// Combine default and custom error models using OneOf
+		errorModel = arrest.OneOfTheseModels(o.Document, allErrorModels...)
 	} else {
 		// Use default error model
 		errorModel = arrest.ModelFrom[ErrorResponse](o.Document)
@@ -229,6 +244,50 @@ func hasBodyFields(inputType reflect.Type) bool {
 	return false
 }
 
+// defaultErrorHandler is the default error handler that checks if the error is an *ErrorResponse
+// and returns it as-is if so. Otherwise, it constructs an internal server error.
+// If the original error implements HTTPStatusCoder, it preserves that interface.
+func defaultErrorHandler(ctx *gin2.Context, err error) interface{} {
+	// Check if the error is already an *ErrorResponse
+	if errResp, ok := err.(*ErrorResponse); ok {
+		return errResp
+	}
+
+	// If the error implements HTTPStatusCoder, return it as-is to preserve the status code
+	if _, ok := err.(HTTPStatusCoder); ok {
+		return err
+	}
+
+	// Construct a new ErrorResponse for other error types
+	return &ErrorResponse{
+		Status:  "error",
+		Type:    "internal",
+		Message: err.Error(),
+	}
+}
+
+// handleError processes an error using the appropriate error handler and returns the response with status code.
+// It handles the custom error handler selection and HTTPStatusCoder interface checking.
+func (o *Operation) handleError(c *gin2.Context, err error, options *callOptions, defaultStatusCode int) (interface{}, int) {
+	// Use custom error handler if provided, otherwise use default
+	var errorHandler ErrorHandlerFunc
+	if options.errorHandler != nil {
+		errorHandler = options.errorHandler
+	} else {
+		errorHandler = defaultErrorHandler
+	}
+
+	errResp := errorHandler(c, err)
+
+	// Check if the error response implements HTTPStatusCoder
+	statusCode := defaultStatusCode
+	if statusCoder, ok := errResp.(HTTPStatusCoder); ok {
+		statusCode = statusCoder.HTTPStatusCode()
+	}
+
+	return errResp, statusCode
+}
+
 // generateHandler creates a gin.HandlerFunc that maps HTTP requests to controller function calls.
 func (o *Operation) generateHandler(controller interface{}, inputType, outputType reflect.Type, options *callOptions) gin2.HandlerFunc {
 	controllerValue := reflect.ValueOf(controller)
@@ -238,12 +297,13 @@ func (o *Operation) generateHandler(controller interface{}, inputType, outputTyp
 		if options.panicProtection {
 			defer func() {
 				if r := recover(); r != nil {
-					err := ErrorResponse{
+					panicErr := &ErrorResponse{
 						Status:  "error",
 						Type:    "internal",
 						Message: fmt.Sprintf("Internal server error: %v", r),
 					}
-					c.JSON(http.StatusInternalServerError, err)
+					errResp, statusCode := o.handleError(c, panicErr, options, http.StatusInternalServerError)
+					c.JSON(statusCode, errResp)
 				}
 			}()
 		}
@@ -251,12 +311,13 @@ func (o *Operation) generateHandler(controller interface{}, inputType, outputTyp
 		// Extract input from request
 		input, err := o.extractInput(c, inputType)
 		if err != nil {
-			errResp := ErrorResponse{
+			validationErr := &ErrorResponse{
 				Status:  "error",
 				Type:    "validation",
 				Message: err.Error(),
 			}
-			c.JSON(http.StatusBadRequest, errResp)
+			errResp, statusCode := o.handleError(c, validationErr, options, http.StatusBadRequest)
+			c.JSON(statusCode, errResp)
 			return
 		}
 
@@ -273,17 +334,21 @@ func (o *Operation) generateHandler(controller interface{}, inputType, outputTyp
 		// Check for error
 		if !errValue.IsNil() {
 			err := errValue.Interface().(error)
-			errResp := ErrorResponse{
-				Status:  "error",
-				Type:    "internal",
-				Message: err.Error(),
-			}
-			c.JSON(http.StatusInternalServerError, errResp)
+			errResp, statusCode := o.handleError(c, err, options, http.StatusInternalServerError)
+			c.JSON(statusCode, errResp)
 			return
 		}
 
 		// Return success response
-		c.JSON(http.StatusOK, output.Interface())
+		outputInterface := output.Interface()
+
+		// Check if the response implements HTTPStatusCoder
+		statusCode := http.StatusOK
+		if statusCoder, ok := outputInterface.(HTTPStatusCoder); ok {
+			statusCode = statusCoder.HTTPStatusCode()
+		}
+
+		c.JSON(statusCode, outputInterface)
 	}
 }
 
