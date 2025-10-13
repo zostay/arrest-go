@@ -256,7 +256,6 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 	return nil
 }
 
-
 // SecuritySchemeComponent adds a security scheme component to the document. You
 // can then use the fqn to reference this schema in other parts of the document.
 func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Document {
@@ -273,7 +272,6 @@ func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Docum
 
 	return d
 }
-
 
 // SchemaComponents lists all the schema components in the document.
 func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {

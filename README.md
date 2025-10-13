@@ -540,6 +540,112 @@ doc.Post("/pets").
 
 ## Advanced Features
 
+### 🔀 **Polymorphic Types (oneOf, anyOf, allOf)**
+
+Arrest Go provides comprehensive support for OpenAPI polymorphic schemas using oneOf, anyOf, and allOf compositions with discriminator support.
+
+#### Explicit Polymorphic Functions
+
+Create polymorphic schemas explicitly using constructor functions:
+
+```go
+// Create individual models first
+dogModel := arrest.ModelFrom[Dog](doc, arrest.AsComponent()).Description("A dog")
+catModel := arrest.ModelFrom[Cat](doc, arrest.AsComponent()).Description("A cat")
+birdModel := arrest.ModelFrom[Bird](doc, arrest.AsComponent()).Description("A bird")
+
+// Create polymorphic composition
+animalModel := arrest.OneOfTheseModels(doc, dogModel, catModel, birdModel).
+    Discriminator("animalType", "dog",
+        "dog", "cat", "bird") // discriminator property, default, mappings
+
+// Use in OpenAPI operations
+doc.Post("/animals").
+    RequestBody("application/json", animalModel)
+```
+
+**Available Functions:**
+- `OneOfTheseModels(doc, models...)` - Exactly one of the schemas
+- `AnyOfTheseModels(doc, models...)` - One or more of the schemas
+- `AllOfTheseModels(doc, models...)` - All schemas combined
+
+#### Implicit Polymorphic Types with Struct Tags
+
+Define polymorphic types declaratively using struct tags:
+
+```go
+// Inline polymorphism - discriminated union
+type Animal struct {
+    AnimalType string `json:"animalType" openapi:",discriminator,defaultMapping=dog"`
+    Dog        Dog    `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+    Cat        Cat    `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+    Bird       Bird   `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+}
+
+// Component reference polymorphism
+type Vehicle struct {
+    VehicleType string      `json:"vehicleType" openapi:",discriminator"`
+    Car         *Car        `json:"car,omitempty" openapi:",oneOf,mapping=car,refName=Car"`
+    Truck       *Truck      `json:"truck,omitempty" openapi:",oneOf,mapping=truck,refName=Truck"`
+    Motorcycle  *Motorcycle `json:"motorcycle,omitempty" openapi:",oneOf,mapping=motorcycle,refName=Motorcycle"`
+}
+
+// Generate schemas automatically
+animalModel := arrest.ModelFrom[Animal](doc)
+vehicleModel := arrest.ModelFrom[Vehicle](doc, arrest.WithComponents()) // Register referenced components
+```
+
+#### Polymorphic Struct Tag Reference
+
+| Tag Pattern | Description | Example |
+|-------------|-------------|---------|
+| `openapi:",discriminator"` | Marks discriminator field | `Type string \`openapi:",discriminator"\`` |
+| `openapi:",discriminator,defaultMapping=value"` | Discriminator with default | `Type string \`openapi:",discriminator,defaultMapping=car"\`` |
+| `openapi:",oneOf,mapping=value"` | OneOf schema mapping | `Car Car \`openapi:",oneOf,mapping=car"\`` |
+| `openapi:",anyOf,mapping=value"` | AnyOf schema mapping | `Field Type \`openapi:",anyOf,mapping=type1"\`` |
+| `openapi:",allOf,mapping=value"` | AllOf schema mapping | `Base Base \`openapi:",allOf,mapping=base"\`` |
+| `openapi:",oneOf,mapping=value,refName=Name"` | Component reference | `Car *Car \`openapi:",oneOf,mapping=car,refName=Car"\`` |
+
+#### Gin Integration with Polymorphic Types
+
+Use polymorphic types seamlessly with the Call method:
+
+```go
+type CreateAnimalRequest struct {
+    AnimalType string `json:"animalType" openapi:",discriminator,defaultMapping=dog"`
+    Dog        Dog    `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+    Cat        Cat    `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+    Source     string `json:"source" openapi:",in=query"` // Query parameter
+}
+
+func CreateAnimal(ctx context.Context, req CreateAnimalRequest) (*Animal, error) {
+    // Controller logic with polymorphic input
+    switch req.AnimalType {
+    case "dog":
+        return &Animal{AnimalType: "dog", Dog: req.Dog}, nil
+    case "cat":
+        return &Animal{AnimalType: "cat", Cat: req.Cat}, nil
+    default:
+        return nil, errors.New("invalid animal type")
+    }
+}
+
+// Polymorphic error handling
+validationError := arrest.ModelFrom[ValidationError](doc, arrest.AsComponent())
+businessError := arrest.ModelFrom[BusinessError](doc, arrest.AsComponent())
+
+doc.Post("/animals").
+    Call(CreateAnimal,
+        arrestgin.WithPolymorphicError(validationError, businessError), // Multiple error types
+    )
+```
+
+The generated OpenAPI specification includes:
+- **oneOf/anyOf/allOf compositions** for polymorphic request/response schemas
+- **Discriminator objects** with property names and type mappings
+- **Component references** for reusable schema definitions
+- **Automatic parameter extraction** from struct tags alongside polymorphic types
+
 ### 🔄 **Recursive Type Handling**
 
 Automatic detection and handling of self-referencing and mutually recursive

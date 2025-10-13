@@ -594,3 +594,354 @@ func TestCallMethod_WithoutComponents(t *testing.T) {
 	assert.Contains(t, spec, "name:")
 	assert.Contains(t, spec, "type: string")
 }
+
+// Test polymorphic types for requests and responses
+type PolymorphicPetRequest struct {
+	PetType string          `json:"petType" openapi:",discriminator,defaultMapping=dog"`
+	Dog     PolymorphicDog  `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+	Cat     PolymorphicCat  `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+	Bird    PolymorphicBird `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+}
+
+type PolymorphicDog struct {
+	Breed string `json:"breed"`
+	Name  string `json:"name"`
+}
+
+type PolymorphicCat struct {
+	Lives int    `json:"lives"`
+	Name  string `json:"name"`
+}
+
+type PolymorphicBird struct {
+	CanFly bool   `json:"canFly"`
+	Name   string `json:"name"`
+}
+
+// Polymorphic response type
+type PolymorphicPetResponse struct {
+	ID      int             `json:"id"`
+	PetType string          `json:"petType" openapi:",discriminator,defaultMapping=dog"`
+	Dog     PolymorphicDog  `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+	Cat     PolymorphicCat  `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+	Bird    PolymorphicBird `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+}
+
+// Polymorphic error response type
+type PolymorphicError struct {
+	ErrorType  string          `json:"errorType" openapi:",discriminator,defaultMapping=validation"`
+	Validation ValidationError `json:",inline,omitempty" openapi:",oneOf,mapping=validation"`
+	Internal   InternalError   `json:",inline,omitempty" openapi:",oneOf,mapping=internal"`
+	NotFound   NotFoundError   `json:",inline,omitempty" openapi:",oneOf,mapping=not_found"`
+}
+
+type ValidationError struct {
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
+	Fields  map[string]string `json:"fields,omitempty"`
+}
+
+type InternalError struct {
+	Status    string `json:"status"`
+	Message   string `json:"message"`
+	RequestID string `json:"requestId,omitempty"`
+}
+
+type NotFoundError struct {
+	Status   string `json:"status"`
+	Message  string `json:"message"`
+	Resource string `json:"resource"`
+}
+
+// Controller functions using polymorphic types
+func CreatePolymorphicPet(ctx context.Context, req PolymorphicPetRequest) (PolymorphicPetResponse, error) {
+	response := PolymorphicPetResponse{
+		ID:      1,
+		PetType: req.PetType,
+	}
+
+	// Copy the polymorphic data
+	switch req.PetType {
+	case "dog":
+		response.Dog = req.Dog
+	case "cat":
+		response.Cat = req.Cat
+	case "bird":
+		response.Bird = req.Bird
+	}
+
+	return response, nil
+}
+
+func GetPolymorphicPet(ctx context.Context, req GetPetRequest) (PolymorphicPetResponse, error) {
+	return PolymorphicPetResponse{
+		ID:      req.ID,
+		PetType: "cat",
+		Cat: PolymorphicCat{
+			Lives: 9,
+			Name:  "Fluffy",
+		},
+	}, nil
+}
+
+func TestCallMethod_PolymorphicRequest(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test the Call method with polymorphic request
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet)
+
+	// Verify no errors
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec was generated correctly
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "/polymorphic-pets")
+	assert.Contains(t, spec, "post:")
+	assert.Contains(t, spec, "requestBody:")
+	assert.Contains(t, spec, "oneOf:")
+	assert.Contains(t, spec, "discriminator:")
+	assert.Contains(t, spec, "propertyName: petType")
+	assert.Contains(t, spec, "defaultMapping: dog")
+	assert.Contains(t, spec, "breed:")  // Dog properties
+	assert.Contains(t, spec, "lives:")  // Cat properties
+	assert.Contains(t, spec, "canFly:") // Bird properties
+}
+
+func TestCallMethod_PolymorphicResponse(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test the Call method with polymorphic response
+	doc.Get("/polymorphic-pets/{id}").Call(GetPolymorphicPet)
+
+	// Verify no errors
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec was generated correctly
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "/polymorphic-pets/{id}")
+	assert.Contains(t, spec, "get:")
+	assert.Contains(t, spec, "responses:")
+	assert.Contains(t, spec, "\"200\":") // Quoted key in YAML
+	assert.Contains(t, spec, "oneOf:")
+	assert.Contains(t, spec, "discriminator:")
+	assert.Contains(t, spec, "propertyName: petType")
+	// Should contain polymorphic properties in oneOf
+	assert.Contains(t, spec, "breed:")  // Dog properties
+	assert.Contains(t, spec, "lives:")  // Cat properties
+	assert.Contains(t, spec, "canFly:") // Bird properties
+}
+
+func TestCallMethod_PolymorphicWithComponents(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Test polymorphic types with component registration
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet, WithComponents())
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes polymorphic components
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "components:")
+	assert.Contains(t, spec, "schemas:")
+	// Should contain component references for polymorphic types
+	assert.Contains(t, spec, "PolymorphicPetRequest")
+	assert.Contains(t, spec, "PolymorphicPetResponse")
+}
+
+func TestGeneratedHandler_PolymorphicRequest(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Register the handler
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet)
+	assert.NoError(t, arrestDoc.Err())
+
+	// Create test request with polymorphic data (Dog)
+	// Note: Go's JSON unmarshaling doesn't automatically handle discriminated unions
+	// so we need to structure the request to match the actual Go struct layout
+	reqBody := map[string]interface{}{
+		"petType": "dog",
+		"Dog": map[string]interface{}{
+			"breed": "Golden Retriever",
+			"name":  "Buddy",
+		},
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/polymorphic-pets", bytes.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	// Execute request
+	router.ServeHTTP(resp, req)
+
+	// Check response
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	var result map[string]interface{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	require.NoError(t, err)
+
+	assert.Equal(t, float64(1), result["id"]) // JSON unmarshals numbers as float64
+	assert.Equal(t, "dog", result["petType"])
+
+	// Access the polymorphic data from the nested Dog object
+	dog, ok := result["Dog"].(map[string]interface{})
+	require.True(t, ok, "Dog field should be a nested object")
+	assert.Equal(t, "Golden Retriever", dog["breed"])
+	assert.Equal(t, "Buddy", dog["name"])
+}
+
+func TestGeneratedHandler_PolymorphicRequestCat(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Register the handler
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet)
+	assert.NoError(t, arrestDoc.Err())
+
+	// Create test request with polymorphic data (Cat)
+	// Note: Go's JSON unmarshaling doesn't automatically handle discriminated unions
+	// so we need to structure the request to match the actual Go struct layout
+	reqBody := map[string]interface{}{
+		"petType": "cat",
+		"Cat": map[string]interface{}{
+			"lives": 9,
+			"name":  "Whiskers",
+		},
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/polymorphic-pets", bytes.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	// Execute request
+	router.ServeHTTP(resp, req)
+
+	// Check response
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	var result map[string]interface{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	require.NoError(t, err)
+
+	assert.Equal(t, float64(1), result["id"]) // JSON unmarshals numbers as float64
+	assert.Equal(t, "cat", result["petType"])
+
+	// Access the polymorphic data from the nested Cat object
+	cat, ok := result["Cat"].(map[string]interface{})
+	require.True(t, ok, "Cat field should be a nested object")
+	assert.Equal(t, float64(9), cat["lives"]) // JSON unmarshals numbers as float64
+	assert.Equal(t, "Whiskers", cat["name"])
+}
+
+func TestCallMethod_PolymorphicError(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Create polymorphic error models
+	validationErrorModel := arrest.ModelFrom[ValidationError](arrestDoc)
+	internalErrorModel := arrest.ModelFrom[InternalError](arrestDoc)
+	notFoundErrorModel := arrest.ModelFrom[NotFoundError](arrestDoc)
+
+	// Test polymorphic error models
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet, WithPolymorphicError(
+		validationErrorModel,
+		internalErrorModel,
+		notFoundErrorModel,
+	))
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes polymorphic error response
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "default:")
+	assert.Contains(t, spec, "oneOf:")
+	// Should contain all error model properties
+	assert.Contains(t, spec, "status:")    // Common to all error types
+	assert.Contains(t, spec, "message:")   // Common to all error types
+	assert.Contains(t, spec, "fields:")    // ValidationError specific
+	assert.Contains(t, spec, "requestId:") // InternalError specific
+	assert.Contains(t, spec, "resource:")  // NotFoundError specific
+}
+
+func TestCallMethod_PolymorphicErrorWithDiscriminator(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	router := gin.New()
+	doc := NewDocument(arrestDoc, router)
+
+	// Create polymorphic error model using struct tags
+	polymorphicErrorModel := arrest.ModelFrom[PolymorphicError](arrestDoc)
+
+	// Test with struct-based polymorphic error
+	doc.Post("/polymorphic-pets").Call(CreatePolymorphicPet, WithCallErrorModel(polymorphicErrorModel))
+
+	assert.NoError(t, arrestDoc.Err())
+
+	// Verify OpenAPI spec includes discriminated error response
+	openAPI, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	spec := string(openAPI)
+	assert.Contains(t, spec, "default:")
+	assert.Contains(t, spec, "oneOf:")
+	assert.Contains(t, spec, "discriminator:")
+	assert.Contains(t, spec, "propertyName: errorType")
+	assert.Contains(t, spec, "defaultMapping: validation")
+	// Should contain all error type properties
+	assert.Contains(t, spec, "status:")    // Common to error types
+	assert.Contains(t, spec, "message:")   // Common to error types
+	assert.Contains(t, spec, "fields:")    // ValidationError specific
+	assert.Contains(t, spec, "requestId:") // InternalError specific
+	assert.Contains(t, spec, "resource:")  // NotFoundError specific
+}

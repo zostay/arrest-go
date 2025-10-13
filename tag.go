@@ -119,3 +119,56 @@ func (info *TagInfo) HasIn() bool {
 func (into *TagInfo) In() string {
 	return into.Props()["in"]
 }
+
+// IsDiscriminator returns true if this field is marked as a discriminator
+func (info *TagInfo) IsDiscriminator() bool {
+	_, exists := info.Props()["discriminator"]
+	return exists
+}
+
+// GetDefaultMapping returns the default mapping value for a discriminator
+func (info *TagInfo) GetDefaultMapping() string {
+	return info.Props()["defaultMapping"]
+}
+
+// GetPolymorphType returns the polymorphic composition type (oneOf, anyOf, allOf)
+func (info *TagInfo) GetPolymorphType() string {
+	props := info.Props()
+	if _, exists := props["oneOf"]; exists {
+		return "oneOf"
+	}
+	if _, exists := props["anyOf"]; exists {
+		return "anyOf"
+	}
+	if _, exists := props["allOf"]; exists {
+		return "allOf"
+	}
+	return ""
+}
+
+// GetMapping returns the discriminator mapping alias for this field
+func (info *TagInfo) GetMapping() string {
+	return info.Props()["mapping"]
+}
+
+// IsInline returns true if this field should be inlined (from json tag)
+func (info *TagInfo) IsInline() bool {
+	parts := info.jsonTag.Parts()
+	for _, part := range parts[1:] {
+		if strings.TrimSpace(part) == "inline" {
+			return true
+		}
+	}
+	return false
+}
+
+// IsOmitEmpty returns true if this field has omitempty (from json tag)
+func (info *TagInfo) IsOmitEmpty() bool {
+	parts := info.jsonTag.Parts()
+	for _, part := range parts[1:] {
+		if strings.TrimSpace(part) == "omitempty" {
+			return true
+		}
+	}
+	return false
+}

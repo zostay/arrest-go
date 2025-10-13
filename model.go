@@ -37,12 +37,191 @@ type refMapper struct {
 	inProcess     map[reflect.Type]bool
 }
 
+// PolymorphicField represents a field that participates in polymorphic composition
+type PolymorphicField struct {
+	Field           reflect.StructField
+	Type            reflect.Type
+	CompositionType string // oneOf, anyOf, allOf
+	Mapping         string // discriminator mapping alias
+	RefName         string // component reference name if any
+	IsInline        bool
+}
+
+// PolymorphicInfo contains information about a polymorphic struct
+type PolymorphicInfo struct {
+	DiscriminatorField reflect.StructField
+	DefaultMapping     string
+	CompositionType    string // oneOf, anyOf, allOf
+	Fields             []PolymorphicField
+}
+
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
 		makeRefs:      make(map[string]*base.SchemaProxy),
 		componentRefs: make(map[string]*base.SchemaProxy),
 		inProcess:     make(map[reflect.Type]bool),
 	}
+}
+
+// detectPolymorphicStruct examines a struct type to determine if it uses polymorphic tags
+func detectPolymorphicStruct(t reflect.Type) (*PolymorphicInfo, bool) {
+	var discriminatorField *reflect.StructField
+	var defaultMapping string
+	var compositionType string
+	var polymorphFields []PolymorphicField
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.PkgPath != "" {
+			continue // skip unexported fields
+		}
+
+		info := NewTagInfo(field.Tag)
+
+		// Check for discriminator field
+		if info.IsDiscriminator() {
+			if discriminatorField != nil {
+				// Multiple discriminators not allowed
+				return nil, false
+			}
+			discriminatorField = &field
+			defaultMapping = info.GetDefaultMapping()
+		}
+
+		// Check for polymorphic composition fields
+		fieldCompositionType := info.GetPolymorphType()
+		if fieldCompositionType != "" {
+			if compositionType == "" {
+				compositionType = fieldCompositionType
+			} else if compositionType != fieldCompositionType {
+				// Mixed composition types not allowed
+				return nil, false
+			}
+
+			fieldType := field.Type
+			// Handle pointer types
+			if fieldType.Kind() == reflect.Ptr {
+				fieldType = fieldType.Elem()
+			}
+
+			polymorphFields = append(polymorphFields, PolymorphicField{
+				Field:           field,
+				Type:            fieldType,
+				CompositionType: fieldCompositionType,
+				Mapping:         info.GetMapping(),
+				RefName:         info.RefName(),
+				IsInline:        info.IsInline(),
+			})
+		}
+	}
+
+	// Must have both discriminator and polymorphic fields to be valid
+	if discriminatorField == nil || len(polymorphFields) == 0 {
+		return nil, false
+	}
+
+	return &PolymorphicInfo{
+		DiscriminatorField: *discriminatorField,
+		DefaultMapping:     defaultMapping,
+		CompositionType:    compositionType,
+		Fields:             polymorphFields,
+	}, true
+}
+
+// buildPolymorphicSchema creates a polymorphic schema based on PolymorphicInfo
+func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	// Create schemas for each polymorphic field
+	var schemas []*base.SchemaProxy
+	mappingEntries := make(map[string]string)
+
+	for _, field := range info.Fields {
+		var fieldSchema *base.SchemaProxy
+		var err error
+
+		if field.IsInline || field.RefName != "" {
+			// For inline fields or fields with refName, create the schema directly
+			fieldSchema, err = makeSchemaProxy(field.Type, makeRefs, skipDoc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create schema for polymorphic field %s: %v", field.Field.Name, err)
+			}
+		} else {
+			// For non-inline, non-ref fields, create a schema with the field as a property
+			fieldProps := orderedmap.New[string, *base.SchemaProxy]()
+
+			fSchema, err := makeSchemaProxy(field.Type, makeRefs, skipDoc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create schema for polymorphic field %s: %v", field.Field.Name, err)
+			}
+
+			fieldName := field.Field.Name
+			fieldInfo := NewTagInfo(field.Field.Tag)
+			if fieldInfo.HasName() {
+				fieldName = fieldInfo.Name()
+			}
+
+			fieldProps.Set(fieldName, fSchema)
+			fieldSchema = base.CreateSchemaProxy(&base.Schema{
+				Type:       []string{"object"},
+				Properties: fieldProps,
+			})
+		}
+
+		// Handle component references
+		if field.RefName != "" {
+			ref := makeRefs.makeComponentRef(field.RefName, field.Type, fieldSchema)
+			fieldSchema = base.CreateSchemaProxyRef(ref)
+		}
+
+		schemas = append(schemas, fieldSchema)
+
+		// Add mapping entry if specified
+		if field.Mapping != "" {
+			var refTarget string
+			if field.RefName != "" {
+				refTarget = "#/components/schemas/" + field.RefName
+			} else {
+				// For inline schemas, we'll need to create a component ref
+				typeName := makeName("", field.Type, "")
+				refTarget = "#/components/schemas/" + typeName
+			}
+			mappingEntries[field.Mapping] = refTarget
+		}
+	}
+
+	// Create the polymorphic schema
+	var schema *base.Schema
+	switch info.CompositionType {
+	case "oneOf":
+		schema = &base.Schema{OneOf: schemas}
+	case "anyOf":
+		schema = &base.Schema{AnyOf: schemas}
+	case "allOf":
+		schema = &base.Schema{AllOf: schemas}
+	default:
+		return nil, fmt.Errorf("unsupported composition type: %s", info.CompositionType)
+	}
+
+	// Add discriminator if we have mappings or default mapping
+	if len(mappingEntries) > 0 || info.DefaultMapping != "" {
+		discriminatorFieldName := info.DiscriminatorField.Name
+		discriminatorInfo := NewTagInfo(info.DiscriminatorField.Tag)
+		if discriminatorInfo.HasName() {
+			discriminatorFieldName = discriminatorInfo.Name()
+		}
+
+		mapping := orderedmap.New[string, string]()
+		for alias, ref := range mappingEntries {
+			mapping.Set(alias, ref)
+		}
+
+		schema.Discriminator = &base.Discriminator{
+			PropertyName:   discriminatorFieldName,
+			DefaultMapping: info.DefaultMapping,
+			Mapping:        mapping,
+		}
+	}
+
+	return base.CreateSchemaProxy(schema), nil
 }
 
 func makeName(refName string, t reflect.Type, defaultSuffix string) string {
@@ -140,6 +319,34 @@ func (m *Model) Description(description string) *Model {
 	return m
 }
 
+// Discriminator configures the discriminator for polymorphic schemas.
+// It takes a property name used to discriminate between schemas, a default mapping,
+// and optional alias-to-value mapping pairs.
+// The mappings parameter should contain pairs of strings: alias1, value1, alias2, value2, etc.
+func (m *Model) Discriminator(propertyName, defaultMapping string, mappings ...string) *Model {
+	if len(mappings)%2 != 0 {
+		return withErr(m, errors.New("discriminator mappings must be provided in pairs (alias, value)"))
+	}
+
+	// Create the mapping from the variadic arguments
+	mapping := orderedmap.New[string, string]()
+	for i := 0; i < len(mappings); i += 2 {
+		alias := mappings[i]
+		value := mappings[i+1]
+		mapping.Set(alias, value)
+	}
+
+	// Create the discriminator
+	discriminator := &base.Discriminator{
+		PropertyName:   propertyName,
+		DefaultMapping: defaultMapping,
+		Mapping:        mapping,
+	}
+
+	m.SchemaProxy.Schema().Discriminator = discriminator
+	return m
+}
+
 func (m *Model) ExtractChildRefs() map[string]*base.SchemaProxy {
 	return m.makeRefs
 }
@@ -149,6 +356,11 @@ func (m *Model) ExtractComponentRefs() map[string]*base.SchemaProxy {
 }
 
 func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	// Check if this is a polymorphic struct first
+	if polymorphInfo, isPolymorphic := detectPolymorphicStruct(t); isPolymorphic {
+		return buildPolymorphicSchema(polymorphInfo, makeRefs, skipDoc)
+	}
+
 	doc := ""
 	fieldDocs := map[string]string{}
 	if !skipDoc {
@@ -533,4 +745,163 @@ func SchemaRef(fqn string) *Model {
 		Name:        fqn,
 		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", sanitizedName)),
 	}
+}
+
+// OneOfTheseModels creates a model that represents a oneOf composition of the provided models.
+// This is used for polymorphic schemas where exactly one of the provided schemas should match.
+func OneOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "OneOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for OneOf
+	oneOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		oneOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		OneOf: oneOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "OneOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
+}
+
+// AnyOfTheseModels creates a model that represents an anyOf composition of the provided models.
+// This is used for polymorphic schemas where any of the provided schemas can match.
+func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "AnyOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for AnyOf
+	anyOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		anyOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		AnyOf: anyOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "AnyOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
+}
+
+// AllOfTheseModels creates a model that represents an allOf composition of the provided models.
+// This is used for polymorphic schemas where all of the provided schemas must match.
+func AllOfTheseModels(doc *Document, models ...*Model) *Model {
+	if len(models) == 0 {
+		return withErr(&Model{
+			Name:          "AllOf",
+			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
+			makeRefs:      make(map[string]*base.SchemaProxy),
+			componentRefs: make(map[string]*base.SchemaProxy),
+		}, ErrUnsupportedModelType)
+	}
+
+	// Create SchemaProxy slice for AllOf
+	allOfSchemas := make([]*base.SchemaProxy, len(models))
+	allMakeRefs := make(map[string]*base.SchemaProxy)
+	allComponentRefs := make(map[string]*base.SchemaProxy)
+
+	// Collect all errors from input models
+	var firstErr error
+	for i, model := range models {
+		if model.Err() != nil && firstErr == nil {
+			firstErr = model.Err()
+		}
+
+		allOfSchemas[i] = model.SchemaProxy
+
+		// Merge refs from all models
+		for k, v := range model.makeRefs {
+			allMakeRefs[k] = v
+		}
+		for k, v := range model.componentRefs {
+			allComponentRefs[k] = v
+		}
+	}
+
+	// Create the composed schema
+	schema := &base.Schema{
+		AllOf: allOfSchemas,
+	}
+
+	m := withErr(&Model{
+		Name:          "AllOf",
+		SchemaProxy:   base.CreateSchemaProxy(schema),
+		makeRefs:      allMakeRefs,
+		componentRefs: allComponentRefs,
+	}, firstErr)
+
+	// Add to document handlers
+	doc.AddHandler(m)
+
+	return m
 }

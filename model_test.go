@@ -491,3 +491,324 @@ func TestModelFrom_Ledger(t *testing.T) {
 	assert.YAMLEq(t, expected_LedgerRequest, string(oas))
 	//assert.Equal(t, expected_LedgerRequest, string(oas))
 }
+
+// Test types for polymorphic tests
+type Dog struct {
+	PetType string `json:"petType"`
+	Breed   string `json:"breed"`
+	Name    string `json:"name"`
+}
+
+type Cat struct {
+	PetType string `json:"petType"`
+	Lives   int    `json:"lives"`
+	Name    string `json:"name"`
+}
+
+type Bird struct {
+	PetType string `json:"petType"`
+	CanFly  bool   `json:"canFly"`
+	Name    string `json:"name"`
+}
+
+const expected_OneOfTheseModels = `openapi: 3.1.0
+info:
+  title: test
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  breed:
+                    type: string
+                  name:
+                    type: string
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  lives:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+`
+
+func TestOneOfTheseModels(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	dogModel := arrest.ModelFrom[Dog](doc)
+	catModel := arrest.ModelFrom[Cat](doc)
+
+	petModel := arrest.OneOfTheseModels(doc, dogModel, catModel)
+	assert.NoError(t, petModel.Err())
+
+	doc.Post("/pets").
+		RequestBody("application/json", petModel)
+
+	assert.NoError(t, doc.Err())
+
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, expected_OneOfTheseModels, string(oas))
+}
+
+const expected_AnyOfTheseModels = `openapi: 3.1.0
+info:
+  title: test
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  breed:
+                    type: string
+                  name:
+                    type: string
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  lives:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+`
+
+func TestAnyOfTheseModels(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	dogModel := arrest.ModelFrom[Dog](doc)
+	catModel := arrest.ModelFrom[Cat](doc)
+
+	petModel := arrest.AnyOfTheseModels(doc, dogModel, catModel)
+	assert.NoError(t, petModel.Err())
+
+	doc.Post("/pets").
+		RequestBody("application/json", petModel)
+
+	assert.NoError(t, doc.Err())
+
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, expected_AnyOfTheseModels, string(oas))
+}
+
+const expected_AllOfTheseModels = `openapi: 3.1.0
+info:
+  title: test
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  breed:
+                    type: string
+                  name:
+                    type: string
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  lives:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+`
+
+func TestAllOfTheseModels(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	dogModel := arrest.ModelFrom[Dog](doc)
+	catModel := arrest.ModelFrom[Cat](doc)
+
+	hybridModel := arrest.AllOfTheseModels(doc, dogModel, catModel)
+	assert.NoError(t, hybridModel.Err())
+
+	doc.Post("/pets").
+		RequestBody("application/json", hybridModel)
+
+	assert.NoError(t, doc.Err())
+
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, expected_AllOfTheseModels, string(oas))
+}
+
+const expected_DiscriminatorOneOf = `openapi: 3.1.0
+info:
+  title: test
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  breed:
+                    type: string
+                  name:
+                    type: string
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  lives:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+              - type: object
+                properties:
+                  petType:
+                    type: string
+                  canFly:
+                    type: boolean
+                  name:
+                    type: string
+              discriminator:
+                propertyName: petType
+                defaultMapping: dog
+                mapping:
+                  dog: '#/components/schemas/github.com.zostay.arrest-go_test.Dog'
+                  cat: '#/components/schemas/github.com.zostay.arrest-go_test.Cat'
+                  bird: '#/components/schemas/github.com.zostay.arrest-go_test.Bird'
+components:
+  schemas:
+    github.com.zostay.arrest-go_test.Dog:
+      type: object
+      properties:
+        petType:
+          type: string
+        breed:
+          type: string
+        name:
+          type: string
+    github.com.zostay.arrest-go_test.Cat:
+      type: object
+      properties:
+        petType:
+          type: string
+        lives:
+          type: integer
+          format: int32
+        name:
+          type: string
+    github.com.zostay.arrest-go_test.Bird:
+      type: object
+      properties:
+        petType:
+          type: string
+        canFly:
+          type: boolean
+        name:
+          type: string
+`
+
+func TestDiscriminatorWithOneOf(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	dogModel := arrest.ModelFrom[Dog](doc, arrest.AsComponent())
+	catModel := arrest.ModelFrom[Cat](doc, arrest.AsComponent())
+	birdModel := arrest.ModelFrom[Bird](doc, arrest.AsComponent())
+
+	petModel := arrest.OneOfTheseModels(doc, dogModel, catModel, birdModel).
+		Discriminator("petType", "dog",
+			"dog", "#/components/schemas/"+dogModel.MappedName(doc.PkgMap),
+			"cat", "#/components/schemas/"+catModel.MappedName(doc.PkgMap),
+			"bird", "#/components/schemas/"+birdModel.MappedName(doc.PkgMap))
+
+	assert.NoError(t, petModel.Err())
+
+	doc.Post("/pets").
+		RequestBody("application/json", petModel)
+
+	assert.NoError(t, doc.Err())
+
+	oas, err := doc.OpenAPI.Render()
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, expected_DiscriminatorOneOf, string(oas))
+}
+
+func TestDiscriminatorInvalidMappings(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	dogModel := arrest.ModelFrom[Dog](doc)
+	catModel := arrest.ModelFrom[Cat](doc)
+
+	// Test odd number of mapping arguments (should cause error)
+	petModel := arrest.OneOfTheseModels(doc, dogModel, catModel).
+		Discriminator("petType", "dog", "dog") // Missing the value for "dog"
+
+	assert.Error(t, petModel.Err())
+	assert.Contains(t, petModel.Err().Error(), "discriminator mappings must be provided in pairs")
+}
+
+func TestEmptyModelsError(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+
+	// Test OneOfTheseModels with no models
+	oneOfModel := arrest.OneOfTheseModels(doc)
+	assert.Error(t, oneOfModel.Err())
+	assert.ErrorIs(t, oneOfModel.Err(), arrest.ErrUnsupportedModelType)
+
+	// Test AnyOfTheseModels with no models
+	anyOfModel := arrest.AnyOfTheseModels(doc)
+	assert.Error(t, anyOfModel.Err())
+	assert.ErrorIs(t, anyOfModel.Err(), arrest.ErrUnsupportedModelType)
+
+	// Test AllOfTheseModels with no models
+	allOfModel := arrest.AllOfTheseModels(doc)
+	assert.Error(t, allOfModel.Err())
+	assert.ErrorIs(t, allOfModel.Err(), arrest.ErrUnsupportedModelType)
+}

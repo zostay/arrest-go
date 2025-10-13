@@ -210,16 +210,71 @@ model := arrest.ModelFrom[User](doc, arrest.WithComponentName("UserModel"))
 - Child references only registered as components when parent is a component
 - Fixed bug where all models were automatically registered as components
 
+### Polymorphic Type Support
+arrest-go provides comprehensive support for OpenAPI 3+ polymorphic schemas:
+
+#### Explicit Polymorphic Functions
+```go
+// Constructor functions for polymorphic compositions
+oneOfModel := arrest.OneOfTheseModels(doc, dogModel, catModel, birdModel).
+    Discriminator("animalType", "dog", "dog", "cat", "bird")
+
+anyOfModel := arrest.AnyOfTheseModels(doc, mammalModel, birdModel)
+allOfModel := arrest.AllOfTheseModels(doc, baseModel, extendedModel)
+```
+
+#### Implicit Polymorphic Types via Struct Tags
+```go
+type Animal struct {
+    AnimalType string `json:"animalType" openapi:",discriminator,defaultMapping=dog"`
+    Dog        Dog    `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+    Cat        Cat    `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+    Bird       Bird   `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+}
+
+// With component references
+type Vehicle struct {
+    VehicleType string      `json:"vehicleType" openapi:",discriminator,defaultMapping=car"`
+    Car         *Car        `json:"car,omitempty" openapi:",oneOf,mapping=car,refName=Car"`
+    Truck       *Truck      `json:"truck,omitempty" openapi:",oneOf,mapping=truck,refName=Truck"`
+    Motorcycle  *Motorcycle `json:"motorcycle,omitempty" openapi:",oneOf,mapping=motorcycle,refName=Motorcycle"`
+}
+```
+
+**Supported Struct Tags:**
+- `openapi:",discriminator,defaultMapping=<type>"` - Discriminator property with default
+- `openapi:",oneOf,mapping=<type>"` - OneOf variant mapping
+- `openapi:",anyOf,mapping=<type>"` - AnyOf variant mapping
+- `openapi:",allOf,mapping=<type>"` - AllOf variant mapping
+- `openapi:",oneOf,mapping=<type>,refName=<name>"` - Component reference variant
+
+#### Gin Polymorphic Integration
+```go
+// Polymorphic error responses
+ginDoc.Post("/animals").Call(CreateAnimal,
+    arrestgin.WithPolymorphicError(validationErrorModel, businessErrorModel, systemErrorModel))
+
+// Automatic polymorphic request/response handling
+func CreateAnimal(ctx context.Context, req CreateAnimalRequest) (AnimalResponse, error) {
+    // Controller automatically handles polymorphic input based on discriminator
+    switch req.AnimalType {
+    case "dog":
+        return processDog(req.Dog)
+    case "cat":
+        return processCat(req.Cat)
+    }
+}
+```
+
 ### Recent Changes
 Recent work has focused on:
+- **MAJOR: Polymorphic Type Support**: Complete implementation of OpenAPI 3+ polymorphic schemas (oneOf, anyOf, allOf) with discriminator support
+- **Implicit Polymorphic Types**: Struct tag-based polymorphic definition for declarative schema generation
+- **Gin Polymorphic Integration**: Full polymorphic support in gin Call method with `WithPolymorphicError()` option
 - **Breaking Change**: `ModelFrom` now requires document context: `ModelFrom[T]()` → `ModelFrom[T](doc, opts...)`
 - **New Component Registration**: Added `AsComponent()` and `WithComponentName()` options for explicit component registration
 - **Fixed Component Registration Bug**: Components are now only registered when explicitly requested with `AsComponent()`
 - **Removed `SchemaComponentRef()`**: Replaced with `ModelFrom[T](doc, AsComponent())` + `SchemaRef()`
-- Implementing the Call method for automatic handler generation from controller functions
-- Improving recursive type handling and ensuring package mapping is correctly applied to all schema references
-- Adding automatic parameter extraction and request body inference for gin operations
-- Enhancing error handling with standardized error response formats
 
 ## Working with the Gin Subpackage
 
@@ -233,9 +288,17 @@ The gin subpackage has its own go.mod and should be treated as a separate module
 ### Gin Examples
 - `gin/examples/petstore/rest/` - Manual handler implementation
 - `gin/examples/petstore/call/` - Call method implementation demonstrating automatic handler generation
+- `gin/examples/polymorphic/` - **NEW**: Comprehensive polymorphic API example with discriminator support
 
 ### Testing Gin Features
 ```bash
-cd gin && go test ./...                    # Test all gin functionality
-cd gin && go test ./examples/petstore/call # Test Call method example
+cd gin && go test ./...                         # Test all gin functionality
+cd gin && go test ./examples/petstore/call      # Test Call method example
+cd gin && go test ./examples/polymorphic        # Test polymorphic functionality
+```
+
+### Running Examples
+```bash
+cd gin/examples/polymorphic && go run main.go  # Start polymorphic API server
+# Visit http://localhost:8080 for interactive Swagger UI
 ```

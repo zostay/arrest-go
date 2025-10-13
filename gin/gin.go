@@ -181,10 +181,10 @@ type CallOption func(*callOptions)
 
 // callOptions holds configuration for the Call method.
 type callOptions struct {
-	errorModels        []*arrest.Model
-	panicProtection    bool
-	requestComponent   bool
-	responseComponent  bool
+	errorModels       []*arrest.Model
+	panicProtection   bool
+	requestComponent  bool
+	responseComponent bool
 }
 
 // WithCallErrorModel adds a custom error model to the operation.
@@ -225,5 +225,14 @@ func WithComponents() CallOption {
 	return func(o *callOptions) {
 		o.requestComponent = true
 		o.responseComponent = true
+	}
+}
+
+// WithPolymorphicError creates a polymorphic error response using OneOf composition.
+// This allows the API to return different error types in a structured way.
+// Multiple calls will add more error models to the OneOf composition.
+func WithPolymorphicError(errorModels ...*arrest.Model) CallOption {
+	return func(o *callOptions) {
+		o.errorModels = append(o.errorModels, errorModels...)
 	}
 }
