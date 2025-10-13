@@ -597,10 +597,10 @@ func TestCallMethod_WithoutComponents(t *testing.T) {
 
 // Test polymorphic types for requests and responses
 type PolymorphicPetRequest struct {
-	PetType string            `json:"petType" openapi:",discriminator,defaultMapping=dog"`
-	Dog     PolymorphicDog    `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
-	Cat     PolymorphicCat    `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
-	Bird    PolymorphicBird   `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+	PetType string          `json:"petType" openapi:",discriminator,defaultMapping=dog"`
+	Dog     PolymorphicDog  `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+	Cat     PolymorphicCat  `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+	Bird    PolymorphicBird `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
 }
 
 type PolymorphicDog struct {
@@ -620,19 +620,19 @@ type PolymorphicBird struct {
 
 // Polymorphic response type
 type PolymorphicPetResponse struct {
-	ID      int               `json:"id"`
-	PetType string            `json:"petType" openapi:",discriminator,defaultMapping=dog"`
-	Dog     PolymorphicDog    `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
-	Cat     PolymorphicCat    `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
-	Bird    PolymorphicBird   `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
+	ID      int             `json:"id"`
+	PetType string          `json:"petType" openapi:",discriminator,defaultMapping=dog"`
+	Dog     PolymorphicDog  `json:",inline,omitempty" openapi:",oneOf,mapping=dog"`
+	Cat     PolymorphicCat  `json:",inline,omitempty" openapi:",oneOf,mapping=cat"`
+	Bird    PolymorphicBird `json:",inline,omitempty" openapi:",oneOf,mapping=bird"`
 }
 
 // Polymorphic error response type
 type PolymorphicError struct {
-	ErrorType string            `json:"errorType" openapi:",discriminator,defaultMapping=validation"`
-	Validation ValidationError  `json:",inline,omitempty" openapi:",oneOf,mapping=validation"`
-	Internal   InternalError    `json:",inline,omitempty" openapi:",oneOf,mapping=internal"`
-	NotFound   NotFoundError    `json:",inline,omitempty" openapi:",oneOf,mapping=not_found"`
+	ErrorType  string          `json:"errorType" openapi:",discriminator,defaultMapping=validation"`
+	Validation ValidationError `json:",inline,omitempty" openapi:",oneOf,mapping=validation"`
+	Internal   InternalError   `json:",inline,omitempty" openapi:",oneOf,mapping=internal"`
+	NotFound   NotFoundError   `json:",inline,omitempty" openapi:",oneOf,mapping=not_found"`
 }
 
 type ValidationError struct {
@@ -661,11 +661,12 @@ func CreatePolymorphicPet(ctx context.Context, req PolymorphicPetRequest) (Polym
 	}
 
 	// Copy the polymorphic data
-	if req.PetType == "dog" {
+	switch req.PetType {
+	case "dog":
 		response.Dog = req.Dog
-	} else if req.PetType == "cat" {
+	case "cat":
 		response.Cat = req.Cat
-	} else if req.PetType == "bird" {
+	case "bird":
 		response.Bird = req.Bird
 	}
 
@@ -710,9 +711,9 @@ func TestCallMethod_PolymorphicRequest(t *testing.T) {
 	assert.Contains(t, spec, "discriminator:")
 	assert.Contains(t, spec, "propertyName: petType")
 	assert.Contains(t, spec, "defaultMapping: dog")
-	assert.Contains(t, spec, "breed:")      // Dog properties
-	assert.Contains(t, spec, "lives:")      // Cat properties
-	assert.Contains(t, spec, "canFly:")     // Bird properties
+	assert.Contains(t, spec, "breed:")  // Dog properties
+	assert.Contains(t, spec, "lives:")  // Cat properties
+	assert.Contains(t, spec, "canFly:") // Bird properties
 }
 
 func TestCallMethod_PolymorphicResponse(t *testing.T) {
@@ -738,14 +739,14 @@ func TestCallMethod_PolymorphicResponse(t *testing.T) {
 	assert.Contains(t, spec, "/polymorphic-pets/{id}")
 	assert.Contains(t, spec, "get:")
 	assert.Contains(t, spec, "responses:")
-	assert.Contains(t, spec, "\"200\":")     // Quoted key in YAML
+	assert.Contains(t, spec, "\"200\":") // Quoted key in YAML
 	assert.Contains(t, spec, "oneOf:")
 	assert.Contains(t, spec, "discriminator:")
 	assert.Contains(t, spec, "propertyName: petType")
 	// Should contain polymorphic properties in oneOf
-	assert.Contains(t, spec, "breed:")      // Dog properties
-	assert.Contains(t, spec, "lives:")      // Cat properties
-	assert.Contains(t, spec, "canFly:")     // Bird properties
+	assert.Contains(t, spec, "breed:")  // Dog properties
+	assert.Contains(t, spec, "lives:")  // Cat properties
+	assert.Contains(t, spec, "canFly:") // Bird properties
 }
 
 func TestCallMethod_PolymorphicWithComponents(t *testing.T) {
@@ -813,8 +814,7 @@ func TestGeneratedHandler_PolymorphicRequest(t *testing.T) {
 	err = json.Unmarshal(resp.Body.Bytes(), &result)
 	require.NoError(t, err)
 
-
-	assert.Equal(t, float64(1), result["id"])       // JSON unmarshals numbers as float64
+	assert.Equal(t, float64(1), result["id"]) // JSON unmarshals numbers as float64
 	assert.Equal(t, "dog", result["petType"])
 
 	// Access the polymorphic data from the nested Dog object
@@ -863,14 +863,13 @@ func TestGeneratedHandler_PolymorphicRequestCat(t *testing.T) {
 	err = json.Unmarshal(resp.Body.Bytes(), &result)
 	require.NoError(t, err)
 
-
-	assert.Equal(t, float64(1), result["id"])       // JSON unmarshals numbers as float64
+	assert.Equal(t, float64(1), result["id"]) // JSON unmarshals numbers as float64
 	assert.Equal(t, "cat", result["petType"])
 
 	// Access the polymorphic data from the nested Cat object
 	cat, ok := result["Cat"].(map[string]interface{})
 	require.True(t, ok, "Cat field should be a nested object")
-	assert.Equal(t, float64(9), cat["lives"])       // JSON unmarshals numbers as float64
+	assert.Equal(t, float64(9), cat["lives"]) // JSON unmarshals numbers as float64
 	assert.Equal(t, "Whiskers", cat["name"])
 }
 
@@ -905,11 +904,11 @@ func TestCallMethod_PolymorphicError(t *testing.T) {
 	assert.Contains(t, spec, "default:")
 	assert.Contains(t, spec, "oneOf:")
 	// Should contain all error model properties
-	assert.Contains(t, spec, "status:")     // Common to all error types
-	assert.Contains(t, spec, "message:")    // Common to all error types
-	assert.Contains(t, spec, "fields:")     // ValidationError specific
-	assert.Contains(t, spec, "requestId:")  // InternalError specific
-	assert.Contains(t, spec, "resource:")   // NotFoundError specific
+	assert.Contains(t, spec, "status:")    // Common to all error types
+	assert.Contains(t, spec, "message:")   // Common to all error types
+	assert.Contains(t, spec, "fields:")    // ValidationError specific
+	assert.Contains(t, spec, "requestId:") // InternalError specific
+	assert.Contains(t, spec, "resource:")  // NotFoundError specific
 }
 
 func TestCallMethod_PolymorphicErrorWithDiscriminator(t *testing.T) {
@@ -940,9 +939,9 @@ func TestCallMethod_PolymorphicErrorWithDiscriminator(t *testing.T) {
 	assert.Contains(t, spec, "propertyName: errorType")
 	assert.Contains(t, spec, "defaultMapping: validation")
 	// Should contain all error type properties
-	assert.Contains(t, spec, "status:")     // Common to error types
-	assert.Contains(t, spec, "message:")    // Common to error types
-	assert.Contains(t, spec, "fields:")     // ValidationError specific
-	assert.Contains(t, spec, "requestId:")  // InternalError specific
-	assert.Contains(t, spec, "resource:")   // NotFoundError specific
+	assert.Contains(t, spec, "status:")    // Common to error types
+	assert.Contains(t, spec, "message:")   // Common to error types
+	assert.Contains(t, spec, "fields:")    // ValidationError specific
+	assert.Contains(t, spec, "requestId:") // InternalError specific
+	assert.Contains(t, spec, "resource:")  // NotFoundError specific
 }
