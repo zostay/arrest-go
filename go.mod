@@ -6,8 +6,8 @@ require (
 	github.com/pb33f/libopenapi v0.28.0
 	github.com/stretchr/testify v1.11.1
 	github.com/zostay/go-std v0.10.0
-	golang.org/x/tools v0.37.0
-	gopkg.in/yaml.v3 v3.0.1
+	go.yaml.in/yaml/v4 v4.0.0-rc.2
+	golang.org/x/tools v0.38.0
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 	github.com/pb33f/jsonpath v0.1.2 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
-	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
