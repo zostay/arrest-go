@@ -225,32 +225,76 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 						pkgMap,
 					))
 		}
-	} else if slices.Contains(sp.Schema().Type, "object") {
+	} else {
+		// Handle polymorphic schemas (oneOf, anyOf, allOf)
+		if sp.Schema().OneOf != nil {
+			for i, subSchema := range sp.Schema().OneOf {
+				newSp := remapSchemaRefs(ctx, subSchema, pkgMap)
+				if newSp != nil {
+					sp.Schema().OneOf[i] = newSp
+				}
+			}
+		}
+		if sp.Schema().AnyOf != nil {
+			for i, subSchema := range sp.Schema().AnyOf {
+				newSp := remapSchemaRefs(ctx, subSchema, pkgMap)
+				if newSp != nil {
+					sp.Schema().AnyOf[i] = newSp
+				}
+			}
+		}
+		if sp.Schema().AllOf != nil {
+			for i, subSchema := range sp.Schema().AllOf {
+				newSp := remapSchemaRefs(ctx, subSchema, pkgMap)
+				if newSp != nil {
+					sp.Schema().AllOf[i] = newSp
+				}
+			}
+		}
+
+		// Handle discriminator mappings
+		if sp.Schema().Discriminator != nil && sp.Schema().Discriminator.Mapping != nil {
+			for pair := range orderedmap.Iterate(context.TODO(), sp.Schema().Discriminator.Mapping) {
+				currentRef := pair.Value()
+				if strings.HasPrefix(currentRef, "#/components/schemas/") {
+					// Remap the reference using package mapping
+					mappedRef := "#/components/schemas/" +
+						MappedName(
+							strings.TrimPrefix(currentRef, "#/components/schemas/"),
+							pkgMap,
+						)
+					sp.Schema().Discriminator.Mapping.Set(pair.Key(), mappedRef)
+				}
+			}
+		}
+
 		// Handle object properties
-		for pair := range orderedmap.Iterate(context.TODO(), sp.Schema().Properties) {
-			vsp := pair.Value()
-			newSp := remapSchemaRefs(ctx, vsp, pkgMap)
-			if newSp != nil {
-				sp.Schema().Properties.Set(pair.Key(), newSp)
+		if slices.Contains(sp.Schema().Type, "object") {
+			for pair := range orderedmap.Iterate(context.TODO(), sp.Schema().Properties) {
+				vsp := pair.Value()
+				newSp := remapSchemaRefs(ctx, vsp, pkgMap)
+				if newSp != nil {
+					sp.Schema().Properties.Set(pair.Key(), newSp)
+				}
 			}
-		}
 
-		// Also handle additionalProperties for the same object
-		if sp.Schema().AdditionalProperties != nil && sp.Schema().AdditionalProperties.IsA() {
-			newSp := remapSchemaRefs(ctx, sp.Schema().AdditionalProperties.A, pkgMap)
-			if newSp != nil {
-				sp.Schema().AdditionalProperties.A = newSp
+			// Also handle additionalProperties for the same object
+			if sp.Schema().AdditionalProperties != nil && sp.Schema().AdditionalProperties.IsA() {
+				newSp := remapSchemaRefs(ctx, sp.Schema().AdditionalProperties.A, pkgMap)
+				if newSp != nil {
+					sp.Schema().AdditionalProperties.A = newSp
+				}
 			}
-		}
 
-		return nil
-	} else if slices.Contains(sp.Schema().Type, "array") && sp.Schema().Items.IsA() {
-		newSp := remapSchemaRefs(ctx, sp.Schema().Items.A, pkgMap)
-		if newSp != nil {
-			sp.Schema().Items.A = newSp
-		}
+			return nil
+		} else if slices.Contains(sp.Schema().Type, "array") && sp.Schema().Items.IsA() {
+			newSp := remapSchemaRefs(ctx, sp.Schema().Items.A, pkgMap)
+			if newSp != nil {
+				sp.Schema().Items.A = newSp
+			}
 
-		return nil
+			return nil
+		}
 	}
 
 	return nil
