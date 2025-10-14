@@ -7,6 +7,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -212,8 +213,15 @@ func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc 
 		}
 
 		mapping := orderedmap.New[string, string]()
-		for alias, ref := range mappingEntries {
-			mapping.Set(alias, ref)
+		// Sort keys to ensure deterministic order
+		aliases := make([]string, 0, len(mappingEntries))
+		for alias := range mappingEntries {
+			aliases = append(aliases, alias)
+		}
+		sort.Strings(aliases)
+
+		for _, alias := range aliases {
+			mapping.Set(alias, mappingEntries[alias])
 		}
 
 		schema.Discriminator = &base.Discriminator{
