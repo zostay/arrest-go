@@ -52,9 +52,15 @@ go mod tidy
 # Run tests
 go test -v
 
+# Generate OpenAPI spec only (for inspection/documentation)
+go run main.go --generate-spec
+
 # Start the server
 go run main.go
 ```
+
+**Generated File:**
+- `openapi.yaml` - Complete OpenAPI specification showcasing polymorphic schemas, discriminators, and error handling
 
 Then visit:
 - http://localhost:8080 - Interactive API documentation

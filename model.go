@@ -7,6 +7,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -178,7 +179,9 @@ func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc 
 		if field.Mapping != "" {
 			var refTarget string
 			if field.RefName != "" {
-				refTarget = "#/components/schemas/" + field.RefName
+				// Use makeName to create a properly qualified type name that can be mapped
+				typeName := makeName(field.RefName, field.Type, "")
+				refTarget = "#/components/schemas/" + typeName
 			} else {
 				// For inline schemas, we'll need to create a component ref
 				typeName := makeName("", field.Type, "")
@@ -210,8 +213,15 @@ func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc 
 		}
 
 		mapping := orderedmap.New[string, string]()
-		for alias, ref := range mappingEntries {
-			mapping.Set(alias, ref)
+		// Sort keys to ensure deterministic order
+		aliases := make([]string, 0, len(mappingEntries))
+		for alias := range mappingEntries {
+			aliases = append(aliases, alias)
+		}
+		sort.Strings(aliases)
+
+		for _, alias := range aliases {
+			mapping.Set(alias, mappingEntries[alias])
 		}
 
 		schema.Discriminator = &base.Discriminator{
@@ -651,11 +661,17 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	doc.AddHandler(m)
 
 	// Apply package mapping to schema references
-	if slices.Contains(m.SchemaProxy.Schema().Type, "object") {
+	if slices.Contains(m.SchemaProxy.Schema().Type, "object") ||
+		m.SchemaProxy.Schema().OneOf != nil ||
+		m.SchemaProxy.Schema().AnyOf != nil ||
+		m.SchemaProxy.Schema().AllOf != nil {
 		remapSchemaRefs(context.TODO(), m.SchemaProxy, doc.PkgMap)
 	}
 	for _, sp := range m.ExtractChildRefs() {
-		if slices.Contains(sp.Schema().Type, "object") {
+		if slices.Contains(sp.Schema().Type, "object") ||
+			sp.Schema().OneOf != nil ||
+			sp.Schema().AnyOf != nil ||
+			sp.Schema().AllOf != nil {
 			remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
 		}
 	}
@@ -672,7 +688,10 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 		for goPkg, sp := range m.ExtractComponentRefs() {
 			componentFqn := MappedName(goPkg, doc.PkgMap)
 			// Apply package mapping to component schemas
-			if slices.Contains(sp.Schema().Type, "object") {
+			if slices.Contains(sp.Schema().Type, "object") ||
+				sp.Schema().OneOf != nil ||
+				sp.Schema().AnyOf != nil ||
+				sp.Schema().AllOf != nil {
 				remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
 			}
 			c.Schemas.Set(componentFqn, sp)

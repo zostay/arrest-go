@@ -141,7 +141,7 @@ type GetAnimalRequest struct {
 
 // AnimalResponse represents a single animal response
 type AnimalResponse struct {
-	ID        int64 `json:"id"`
+	ID        int64  `json:"id"`
 	CreatedAt string `json:"createdAt"`
 	Animal
 }
@@ -389,6 +389,7 @@ func main() {
 
 	doc.Description("A comprehensive example demonstrating polymorphic types with the Gin Call method")
 	doc.Version("1.0.0")
+	doc.PackageMap("polymorphic.v1", "main")
 
 	// Create Gin router
 	gin.SetMode(gin.ReleaseMode)
@@ -413,7 +414,7 @@ func main() {
 		Tags("animals").
 		Call(CreateAnimal,
 			arrestgin.WithPolymorphicError(validationErrorModel, businessErrorModel, systemErrorModel),
-			arrestgin.WithComponents(),
+			arrestgin.WithResponseComponent(),
 		)
 
 	ginDoc.Get("/animals/{id}").
@@ -462,11 +463,11 @@ func main() {
 		log.Fatalf("Failed to render OpenAPI spec: %v", err)
 	}
 
-	// Save to file
-	if err := os.WriteFile("polymorphic.yaml", openAPISpec, 0644); err != nil {
-		log.Printf("Warning: Failed to write OpenAPI spec to file: %v", err)
+	// Save OpenAPI specification
+	if err := os.WriteFile("openapi.yaml", openAPISpec, 0644); err != nil {
+		log.Printf("Warning: Failed to write OpenAPI spec to openapi.yaml: %v", err)
 	} else {
-		fmt.Println("OpenAPI specification written to polymorphic.yaml")
+		fmt.Println("OpenAPI specification written to openapi.yaml")
 	}
 
 	// Add a route to serve the OpenAPI spec
@@ -511,6 +512,12 @@ func main() {
 		c.Header("Content-Type", "text/html")
 		c.String(http.StatusOK, html)
 	})
+
+	// Check if we should just generate the spec and exit (for CI/documentation)
+	if len(os.Args) > 1 && os.Args[1] == "--generate-spec" {
+		fmt.Println("OpenAPI specification generation complete")
+		return
+	}
 
 	// Start server
 	port := ":8080"

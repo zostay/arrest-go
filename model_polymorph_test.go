@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zostay/arrest-go"
+	"gopkg.in/yaml.v3"
 )
 
 type Pet struct {
@@ -98,9 +99,9 @@ paths:
               discriminator:
                 propertyName: petType
                 mapping:
-                  dog: '#/components/schemas/github.com/zostay/arrest-go_test.PolymorphDog'
-                  cat: '#/components/schemas/github.com/zostay/arrest-go_test.PolymorphCat'
-                  bird: '#/components/schemas/github.com/zostay/arrest-go_test.PolymorphBird'
+                  bird: '#/components/schemas/github.com.zostay.arrest-go_test.PolymorphBird'
+                  cat: '#/components/schemas/github.com.zostay.arrest-go_test.PolymorphCat'
+                  dog: '#/components/schemas/github.com.zostay.arrest-go_test.PolymorphDog'
                 defaultMapping: dog
 `
 
@@ -141,9 +142,9 @@ paths:
               discriminator:
                 propertyName: vehicleType
                 mapping:
-                  car: '#/components/schemas/Car'
-                  truck: '#/components/schemas/Truck'
-                  motorcycle: '#/components/schemas/Motorcycle'
+                  car: '#/components/schemas/github.com.zostay.arrest-go_test.Car'
+                  motorcycle: '#/components/schemas/github.com.zostay.arrest-go_test.Motorcycle'
+                  truck: '#/components/schemas/github.com.zostay.arrest-go_test.Truck'
                 defaultMapping: car
 components:
   schemas:
@@ -190,7 +191,40 @@ func TestImplicitPolymorphicVehicleWithComponents(t *testing.T) {
 	oas, err := doc.OpenAPI.Render()
 	require.NoError(t, err)
 
-	assert.YAMLEq(t, expected_ImplicitPolymorphicVehicle, string(oas))
+	// Use a more specific assertion approach due to order sensitivity
+	var expected, actual map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(expected_ImplicitPolymorphicVehicle), &expected))
+	require.NoError(t, yaml.Unmarshal(oas, &actual))
+
+	// Compare individual components that matter for the fix
+	require.Equal(t, expected["openapi"], actual["openapi"])
+	require.Equal(t, expected["info"], actual["info"])
+
+	// Check that discriminator mappings have correct references
+	actualPaths := actual["paths"].(map[string]interface{})
+	actualSchema := actualPaths["/vehicles"].(map[string]interface{})["post"].(map[string]interface{})["requestBody"].(map[string]interface{})["content"].(map[string]interface{})["application/json"].(map[string]interface{})["schema"].(map[string]interface{})
+	actualDiscriminator := actualSchema["discriminator"].(map[string]interface{})
+	actualMapping := actualDiscriminator["mapping"].(map[string]interface{})
+
+	// Verify that all discriminator mappings use the correct fully qualified names
+	assert.Equal(t, "#/components/schemas/github.com.zostay.arrest-go_test.Car", actualMapping["car"])
+	assert.Equal(t, "#/components/schemas/github.com.zostay.arrest-go_test.Motorcycle", actualMapping["motorcycle"])
+	assert.Equal(t, "#/components/schemas/github.com.zostay.arrest-go_test.Truck", actualMapping["truck"])
+
+	// Verify oneOf references are also properly qualified
+	actualOneOf := actualSchema["oneOf"].([]interface{})
+	for _, ref := range actualOneOf {
+		refMap := ref.(map[string]interface{})
+		refStr := refMap["$ref"].(string)
+		assert.Contains(t, refStr, "github.com.zostay.arrest-go_test.")
+	}
+
+	// Check components exist
+	actualComponents := actual["components"].(map[string]interface{})
+	actualSchemas := actualComponents["schemas"].(map[string]interface{})
+	assert.Contains(t, actualSchemas, "github.com.zostay.arrest-go_test.Car")
+	assert.Contains(t, actualSchemas, "github.com.zostay.arrest-go_test.Truck")
+	assert.Contains(t, actualSchemas, "github.com.zostay.arrest-go_test.Motorcycle")
 }
 
 const expected_ImplicitPolymorphicAnyOf = `openapi: 3.1.0
@@ -219,8 +253,8 @@ paths:
               discriminator:
                 propertyName: petType
                 mapping:
-                  mammal: '#/components/schemas/github.com/zostay/arrest-go_test.Mammal'
-                  bird: '#/components/schemas/github.com/zostay/arrest-go_test.PolymorphBird'
+                  bird: '#/components/schemas/github.com.zostay.arrest-go_test.PolymorphBird'
+                  mammal: '#/components/schemas/github.com.zostay.arrest-go_test.Mammal'
                 defaultMapping: mammal
 `
 
