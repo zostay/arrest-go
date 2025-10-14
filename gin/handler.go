@@ -79,7 +79,12 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		if hasBodyFields(inputType) {
 			// Use ModelFromReflect since we have the reflect.Type
 			if options.requestComponent {
-				inputModel := arrest.ModelFromReflect(inputType, o.Document, arrest.AsComponent())
+				// For component references, use the underlying type (strip pointer)
+				componentType := inputType
+				if componentType.Kind() == reflect.Ptr {
+					componentType = componentType.Elem()
+				}
+				inputModel := arrest.ModelFromReflect(componentType, o.Document, arrest.AsComponent())
 				inputRef := arrest.SchemaRef(inputModel.MappedName(o.Document.PkgMap))
 				o.RequestBody("application/json", inputRef)
 			} else {
@@ -110,7 +115,12 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 			}
 
 			if options.responseComponent {
-				outputModel := arrest.ModelFromReflect(outputType, o.Document, arrest.AsComponent())
+				// For component references, use the underlying type (strip pointer)
+				componentType := outputType
+				if componentType.Kind() == reflect.Ptr {
+					componentType = componentType.Elem()
+				}
+				outputModel := arrest.ModelFromReflect(componentType, o.Document, arrest.AsComponent())
 				outputRef := arrest.SchemaRef(outputModel.MappedName(o.Document.PkgMap))
 				r.Description(description).
 					Content("application/json", outputRef)
