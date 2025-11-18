@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
@@ -114,8 +115,26 @@ func parametersFromStruct(t reflect.Type) *Parameters {
 			fDescription = fieldDocs[fName]
 		}
 
-		p := ParameterFromReflect(f.Type).
-			Name(fName).
+		fReplaceType := info.ReplacementType()
+
+		var p *Parameter
+		if fReplaceType != "" {
+			// Create parameter with custom type override
+			p = &Parameter{
+				Parameter: &v3.Parameter{},
+			}
+
+			// Create schema with the replacement type
+			p.Parameter.Schema = base.CreateSchemaProxy(&base.Schema{
+				Description: fDescription,
+				Type:        []string{fReplaceType},
+			})
+		} else {
+			// Use default reflection-based parameter creation
+			p = ParameterFromReflect(f.Type)
+		}
+
+		p = p.Name(fName).
 			In(fIn).
 			Description(fDescription)
 
