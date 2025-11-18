@@ -686,6 +686,11 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
 		}
 		for goPkg, sp := range m.ExtractComponentRefs() {
+			if (sp == nil) || (sp.Schema() == nil) {
+				doc.AddError(fmt.Errorf("failed to register component reference for %s: schema is nil", goPkg))
+				continue
+			}
+
 			componentFqn := MappedName(goPkg, doc.PkgMap)
 			// Apply package mapping to component schemas
 			if slices.Contains(sp.Schema().Type, "object") ||
