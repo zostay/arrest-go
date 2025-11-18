@@ -668,6 +668,11 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 		remapSchemaRefs(context.TODO(), m.SchemaProxy, doc.PkgMap)
 	}
 	for _, sp := range m.ExtractChildRefs() {
+		if (sp == nil) || (sp.Schema() == nil) {
+			doc.AddError(fmt.Errorf("failed to remap child reference for %s: schema is nil", m.Name))
+			continue
+		}
+
 		if slices.Contains(sp.Schema().Type, "object") ||
 			sp.Schema().OneOf != nil ||
 			sp.Schema().AnyOf != nil ||
