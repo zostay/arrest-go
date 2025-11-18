@@ -667,9 +667,9 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 		m.SchemaProxy.Schema().AllOf != nil {
 		remapSchemaRefs(context.TODO(), m.SchemaProxy, doc.PkgMap)
 	}
-	for _, sp := range m.ExtractChildRefs() {
+	for pkgName, sp := range m.ExtractChildRefs() {
 		if (sp == nil) || (sp.Schema() == nil) {
-			doc.AddError(fmt.Errorf("failed to remap child reference for %s: schema is nil", m.Name))
+			doc.AddError(fmt.Errorf("failed while remapping schema refs for model %s, the package for %s has not be given a schema proxy definition; this may happen when refName and elemRefName are not consistent set", m.Name, pkgName))
 			continue
 		}
 
@@ -692,7 +692,7 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 		}
 		for goPkg, sp := range m.ExtractComponentRefs() {
 			if (sp == nil) || (sp.Schema() == nil) {
-				doc.AddError(fmt.Errorf("failed to register component reference for %s: schema is nil", goPkg))
+				doc.AddError(fmt.Errorf("failed while registering component reference for model %s, the package %s has not be given a schema proxy object; this may happen when refName and elemRefName are not consistently set", m.Name, goPkg))
 				continue
 			}
 
