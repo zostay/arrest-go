@@ -27,7 +27,7 @@ jobs:
       run: go mod verify
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v8
+      uses: golangci/golangci-lint-action@v9
       with:
         version: v2.5.0
         only-new-issues: 'true'
@@ -60,7 +60,7 @@ jobs:
       run: go mod verify
 
     - name: Run golangci-lint (gin)
-      uses: golangci/golangci-lint-action@v8
+      uses: golangci/golangci-lint-action@v9
       with:
         version: v2.5.0
         working-directory: gin
