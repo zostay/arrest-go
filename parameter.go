@@ -134,7 +134,7 @@ func parametersFromStruct(t reflect.Type) *Parameters {
 			p = ParameterFromReflect(f.Type)
 		}
 
-		p = p.Name(fName).
+		p.Name(fName).
 			In(fIn).
 			Description(fDescription)
 
