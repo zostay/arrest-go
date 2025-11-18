@@ -431,3 +431,39 @@ func TestDocumentSkipDocumentation(t *testing.T) {
 	assert.YAMLEq(t, expect, string(rend))
 	//assert.Equal(t, expect, string(rend))
 }
+
+type ParameterTypeOverrideRequest struct {
+	ID       string `json:"id" openapi:",in=path"`
+	UserType int    `json:"userType" openapi:",in=query,type=string"`
+	Count    uint64 `json:"count" openapi:",in=query,type=integer"`
+}
+
+func TestParametersFromStructWithTypeOverrides(t *testing.T) {
+	t.Parallel()
+
+	params := arrest.ParametersFrom[ParameterTypeOverrideRequest]()
+	require.NoError(t, params.Err())
+	require.Len(t, params.Parameters, 3)
+
+	// Check ID parameter - should be path parameter with string type (inferred)
+	idParam := params.Parameters[0]
+	assert.Equal(t, "id", idParam.Parameter.Name)
+	assert.Equal(t, "path", idParam.Parameter.In)
+	assert.NotNil(t, idParam.Parameter.Required)
+	assert.True(t, *idParam.Parameter.Required)
+	assert.Equal(t, []string{"string"}, idParam.Parameter.Schema.Schema().Type)
+
+	// Check UserType parameter - should be query parameter with string type (overridden from int)
+	userTypeParam := params.Parameters[1]
+	assert.Equal(t, "userType", userTypeParam.Parameter.Name)
+	assert.Equal(t, "query", userTypeParam.Parameter.In)
+	assert.Nil(t, userTypeParam.Parameter.Required) // Query params are not required by default
+	assert.Equal(t, []string{"string"}, userTypeParam.Parameter.Schema.Schema().Type)
+
+	// Check Count parameter - should be query parameter with integer type (overridden from uint64)
+	countParam := params.Parameters[2]
+	assert.Equal(t, "count", countParam.Parameter.Name)
+	assert.Equal(t, "query", countParam.Parameter.In)
+	assert.Nil(t, countParam.Parameter.Required) // Query params are not required by default
+	assert.Equal(t, []string{"integer"}, countParam.Parameter.Schema.Schema().Type)
+}

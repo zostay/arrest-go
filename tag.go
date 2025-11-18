@@ -116,8 +116,8 @@ func (info *TagInfo) HasIn() bool {
 	return info.Props()["in"] != ""
 }
 
-func (into *TagInfo) In() string {
-	return into.Props()["in"]
+func (info *TagInfo) In() string {
+	return info.Props()["in"]
 }
 
 // IsDiscriminator returns true if this field is marked as a discriminator
