@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	gin2 "github.com/gin-gonic/gin"
@@ -222,10 +221,10 @@ func hasParameterFields(inputType reflect.Type) bool {
 
 	for i := 0; i < inputType.NumField(); i++ {
 		field := inputType.Field(i)
-		openAPITag := field.Tag.Get("openapi")
+		info := arrest.NewTagInfo(field.Tag)
 
 		// Check if field has in=query or in=path tag
-		if strings.Contains(openAPITag, "in=query") || strings.Contains(openAPITag, "in=path") {
+		if info.In() == "query" || info.In() == "path" {
 			return true
 		}
 	}
@@ -244,10 +243,10 @@ func hasBodyFields(inputType reflect.Type) bool {
 
 	for i := 0; i < inputType.NumField(); i++ {
 		field := inputType.Field(i)
-		openAPITag := field.Tag.Get("openapi")
+		info := arrest.NewTagInfo(field.Tag)
 
 		// If no openapi tag or doesn't specify in=query/path, it's a body field
-		if !strings.Contains(openAPITag, "in=query") && !strings.Contains(openAPITag, "in=path") {
+		if info.In() != "query" && info.In() != "path" {
 			return true
 		}
 	}
@@ -405,27 +404,22 @@ func (o *Operation) extractInput(c *gin2.Context, inputType reflect.Type) (refle
 			continue // Skip unexported fields
 		}
 
-		// Check openapi and json tags to determine source
-		openAPITag := field.Tag.Get("openapi")
-		jsonTag := field.Tag.Get("json")
+		info := arrest.NewTagInfo(field.Tag)
 
 		// Extract field name (use json tag if available, otherwise struct field name)
 		fieldName := field.Name
-		if jsonTag != "" {
-			parts := strings.Split(jsonTag, ",")
-			if parts[0] != "" && parts[0] != "-" {
-				fieldName = parts[0]
-			}
+		if tagName := info.Name(); tagName != "" {
+			fieldName = tagName
 		}
 
 		var value string
 		var found bool
 
 		// Determine where to get the value from
-		if strings.Contains(openAPITag, "in=path") {
+		if info.In() == "path" {
 			value = c.Param(fieldName)
 			found = value != ""
-		} else if strings.Contains(openAPITag, "in=query") || o.method == http.MethodGet || o.method == http.MethodDelete {
+		} else if info.In() == "query" || o.method == http.MethodGet || o.method == http.MethodDelete {
 			value = c.Query(fieldName)
 			found = value != ""
 		} else {
@@ -458,21 +452,17 @@ func (o *Operation) extractInput(c *gin2.Context, inputType reflect.Type) (refle
 				continue
 			}
 
-			openAPITag := field.Tag.Get("openapi")
-			jsonTag := field.Tag.Get("json")
+			info := arrest.NewTagInfo(field.Tag)
 
 			// Skip path and query parameters
-			if strings.Contains(openAPITag, "in=path") || strings.Contains(openAPITag, "in=query") {
+			if info.In() == "path" || info.In() == "query" {
 				continue
 			}
 
 			// Extract field name
 			fieldName := field.Name
-			if jsonTag != "" {
-				parts := strings.Split(jsonTag, ",")
-				if parts[0] != "" && parts[0] != "-" {
-					fieldName = parts[0]
-				}
+			if tagName := info.Name(); tagName != "" {
+				fieldName = tagName
 			}
 
 			if bodyValue, exists := bodyData[fieldName]; exists {
