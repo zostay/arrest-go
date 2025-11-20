@@ -415,9 +415,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 			anonSchema, err := makeSchemaProxy(fType, makeRefs, skipDoc)
 			if err != nil {
 				// very permissive
-				return base.CreateSchemaProxy(&base.Schema{
-					Type: []string{},
-				}), err
+				return base.CreateSchemaProxy(&base.Schema{}), err
 			}
 
 			for k, v := range anonSchema.Schema().Properties.FromOldest() {
@@ -430,9 +428,8 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 			fSchema, err = makeSchemaProxy(fType, makeRefs, skipDoc)
 			if err != nil {
 				// very permissive
-				return base.CreateSchemaProxy(&base.Schema{
-					Type: []string{},
-				}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+				return base.CreateSchemaProxy(&base.Schema{}),
+					fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 			}
 
 			if fDescription != "" {
@@ -444,9 +441,8 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 					fElemSchema, err := makeSchemaProxy(fType.Elem(), makeRefs, skipDoc)
 					if err != nil {
 						// very permissive
-						return base.CreateSchemaProxy(&base.Schema{
-							Type: []string{},
-						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
+						return base.CreateSchemaProxy(&base.Schema{}),
+							fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 					}
 
 					elemRef := makeRefs.makeComponentRef(elemRefName, fType.Elem(), fElemSchema)
@@ -624,14 +620,10 @@ func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.S
 		})
 	case reflect.Interface:
 		// very permissive
-		schema = base.CreateSchemaProxy(&base.Schema{
-			Type: []string{},
-		})
+		schema = base.CreateSchemaProxy(&base.Schema{})
 	default:
 		// very permissive
-		schema = base.CreateSchemaProxy(&base.Schema{
-			Type: []string{},
-		})
+		schema = base.CreateSchemaProxy(&base.Schema{})
 		err = ErrUnsupportedModelType
 	}
 
