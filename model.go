@@ -414,8 +414,9 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 		} else if f.Anonymous {
 			anonSchema, err := makeSchemaProxy(fType, makeRefs, skipDoc)
 			if err != nil {
+				// very permissive
 				return base.CreateSchemaProxy(&base.Schema{
-					Type: []string{"any"},
+					Type: []string{},
 				}), err
 			}
 
@@ -428,8 +429,9 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 			var err error
 			fSchema, err = makeSchemaProxy(fType, makeRefs, skipDoc)
 			if err != nil {
+				// very permissive
 				return base.CreateSchemaProxy(&base.Schema{
-					Type: []string{"any"},
+					Type: []string{},
 				}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 			}
 
@@ -441,8 +443,9 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 				if elemRefName := info.ElemRefName(); elemRefName != "" {
 					fElemSchema, err := makeSchemaProxy(fType.Elem(), makeRefs, skipDoc)
 					if err != nil {
+						// very permissive
 						return base.CreateSchemaProxy(&base.Schema{
-							Type: []string{"any"},
+							Type: []string{},
 						}), fmt.Errorf("failed to resolve field named %q with Go type %q: %v", f.Name, fType.String(), err)
 					}
 
@@ -488,7 +491,7 @@ func makeSchemaProxySlice(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*b
 	sp, err := makeSchemaProxy(t.Elem(), makeRefs, skipDoc)
 	if err != nil {
 		return base.CreateSchemaProxy(&base.Schema{
-			Type: []string{"any"},
+			Type: []string{"array"},
 		}), fmt.Errorf("failed to resolve inner type of array or slice: %v", err)
 	}
 
@@ -506,13 +509,30 @@ func makeSchemaProxySlice(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*b
 }
 
 func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
+	if t.Key().Kind() != reflect.String {
+		// technically illegal, so we'll just return it as type unspecified
+		return base.CreateSchemaProxy(&base.Schema{
+			Type: []string{"object"},
+			AdditionalProperties: &base.DynamicValue[*base.SchemaProxy, bool]{
+				N: 1,
+				B: true,
+			},
+		}), nil
+	}
+
 	sp, err := makeSchemaProxy(t.Elem(), makeRefs, skipDoc)
 	if err != nil {
+		// if the error is ignored, this will render permissive
 		return base.CreateSchemaProxy(&base.Schema{
-			Type: []string{"any"},
+			Type: []string{"object"},
+			AdditionalProperties: &base.DynamicValue[*base.SchemaProxy, bool]{
+				N: 1,
+				B: true,
+			},
 		}), fmt.Errorf("failed to resolve inner type of map: %v", err)
 	}
 
+	// render as an object that points to a specific type
 	schema := base.CreateSchemaProxy(&base.Schema{
 		Type: []string{"object"},
 		AdditionalProperties: &base.DynamicValue[*base.SchemaProxy, bool]{
@@ -603,12 +623,14 @@ func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.S
 			Format: "double",
 		})
 	case reflect.Interface:
+		// very permissive
 		schema = base.CreateSchemaProxy(&base.Schema{
-			Type: []string{"any"},
+			Type: []string{},
 		})
 	default:
+		// very permissive
 		schema = base.CreateSchemaProxy(&base.Schema{
-			Type: []string{"any"},
+			Type: []string{},
 		})
 		err = ErrUnsupportedModelType
 	}
