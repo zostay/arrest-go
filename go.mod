@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pb33f/jsonpath v0.1.2 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.0 // indirect
