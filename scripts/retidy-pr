@@ -65,9 +65,10 @@ if [[ $# -eq 1 ]] && [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo
     echo "Description:"
     echo "  This script creates a git worktree for the specified branch,"
-    echo "  runs 'go mod tidy' in all directories containing go.mod files,"
-    echo "  commits any changes, and pushes them back to the branch."
-    echo "  It also adds a comment to the associated PR if found."
+    echo "  rebases it onto the PR's base branch (preferring PR changes on"
+    echo "  conflicting go.mod lines), runs 'go mod tidy' in all directories"
+    echo "  containing go.mod files, commits any changes, and force-pushes"
+    echo "  with lease. It also adds a comment to the associated PR if found."
     exit 0
 fi
 
@@ -132,8 +133,34 @@ fi
 log_info "Creating worktree for branch: $BRANCH_NAME"
 git worktree add "$WORKTREE_DIR" "origin/$BRANCH_NAME"
 
+# Remember the remote's current SHA so we can force-push safely after rebase
+ORIGINAL_REMOTE_SHA=$(git rev-parse "origin/$BRANCH_NAME")
+
 # Change to worktree directory
 cd "$WORKTREE_DIR"
+
+# Sync with the PR's base branch before tidying. If we skip this, go mod tidy
+# runs against a stale go.mod and any dependency bumps merged to the base since
+# the PR branched off produce additional conflicts instead of fewer.
+log_info "Looking up PR base branch..."
+BASE_BRANCH=$(gh pr view "$BRANCH_NAME" --json baseRefName --jq '.baseRefName' 2>/dev/null || echo "")
+if [[ -z "$BASE_BRANCH" ]]; then
+    log_warning "Could not find PR for branch; defaulting base branch to master"
+    BASE_BRANCH="master"
+fi
+log_info "Base branch: $BASE_BRANCH"
+
+# `-X theirs` keeps the PR's intended changes (e.g. a dependabot version bump)
+# when the same go.mod line was also modified on the base; non-conflicting
+# changes from the base are applied normally.
+log_info "Rebasing onto origin/$BASE_BRANCH (preferring PR changes on conflict)..."
+if ! git rebase -X theirs "origin/$BASE_BRANCH"; then
+    log_error "Rebase produced conflicts that could not be auto-resolved"
+    log_error "Manual intervention required; aborting"
+    git rebase --abort 2>/dev/null || true
+    exit 1
+fi
+log_success "Rebase completed"
 
 # Find all directories with go.mod files
 log_info "Searching for go.mod files..."
@@ -149,78 +176,31 @@ fi
 
 log_info "Found go.mod files in: ${GO_MOD_DIRS[*]}"
 
-# Track if any changes were made
-CHANGES_MADE=false
-
 # Run go mod tidy in each directory
 for dir in "${GO_MOD_DIRS[@]}"; do
     log_info "Running go mod tidy in: $dir"
-
-    # Store current state of go.mod and go.sum
-    go_mod_before=""
-    go_sum_before=""
-
-    if [[ -f "$dir/go.mod" ]]; then
-        go_mod_before=$(cat "$dir/go.mod")
-    fi
-
-    if [[ -f "$dir/go.sum" ]]; then
-        go_sum_before=$(cat "$dir/go.sum")
-    fi
-
-    # Run go mod tidy
-    if (cd "$dir" && go mod tidy); then
-        log_success "go mod tidy completed in $dir"
-
-        # Check if files changed
-        go_mod_after=""
-        go_sum_after=""
-
-        if [[ -f "$dir/go.mod" ]]; then
-            go_mod_after=$(cat "$dir/go.mod")
-        fi
-
-        if [[ -f "$dir/go.sum" ]]; then
-            go_sum_after=$(cat "$dir/go.sum")
-        fi
-
-        if [[ "$go_mod_before" != "$go_mod_after" ]] || [[ "$go_sum_before" != "$go_sum_after" ]]; then
-            log_info "Changes detected in $dir"
-            CHANGES_MADE=true
-        fi
-    else
+    if ! (cd "$dir" && go mod tidy); then
         log_error "go mod tidy failed in $dir"
         exit 1
     fi
+    log_success "go mod tidy completed in $dir"
 done
 
-# Check if there are any changes to commit
-if git diff --quiet; then
-    log_info "No changes detected after running go mod tidy"
-    if [[ "$CHANGES_MADE" == "false" ]]; then
-        log_success "All go.mod and go.sum files are already up to date"
-    fi
-    exit 0
-fi
-
-# Stage all go.mod and go.sum files
-log_info "Staging go.mod and go.sum files..."
-for dir in "${GO_MOD_DIRS[@]}"; do
-    for f in go.mod go.sum; do
-        if [[ -f "$dir/$f" ]] || git ls-files --error-unmatch "$dir/$f" >/dev/null 2>&1; then
-            git add -A -- "$dir/$f"
-        fi
+# Stage any go.mod/go.sum changes from the tidy pass
+if ! git diff --quiet; then
+    log_info "Staging go.mod and go.sum files..."
+    for dir in "${GO_MOD_DIRS[@]}"; do
+        for f in go.mod go.sum; do
+            if [[ -f "$dir/$f" ]] || git ls-files --error-unmatch "$dir/$f" >/dev/null 2>&1; then
+                git add -A -- "$dir/$f"
+            fi
+        done
     done
-done
-
-# Check if there are staged changes
-if git diff --cached --quiet; then
-    log_info "No go.mod or go.sum changes to commit"
-    exit 0
 fi
 
-# Create commit message
-COMMIT_MSG="chore: run go mod tidy after dependency update
+# Commit tidy changes if anything was staged
+if ! git diff --cached --quiet; then
+    COMMIT_MSG="chore: run go mod tidy after dependency update
 
 This commit was automatically generated by the retidy-pr script
 to ensure go.mod and go.sum files are properly synchronized across
@@ -229,13 +209,20 @@ all modules in the repository.
 Modules updated:
 $(printf -- '- %s\n' "${GO_MOD_DIRS[@]}")"
 
-# Commit changes
-log_info "Committing changes..."
-git commit -m "$COMMIT_MSG"
+    log_info "Committing tidy changes..."
+    git commit -m "$COMMIT_MSG"
+fi
 
-# Push changes
+# If neither the rebase nor the tidy pass produced new commits, we're done.
+if [[ "$(git rev-parse HEAD)" == "$ORIGINAL_REMOTE_SHA" ]]; then
+    log_success "Branch already synced with $BASE_BRANCH and tidied; nothing to push"
+    exit 0
+fi
+
+# Rebase rewrote history, so force-with-lease is required. The lease ensures
+# we only overwrite the remote if it still points at what we fetched.
 log_info "Pushing changes to branch: $BRANCH_NAME"
-git push origin "HEAD:$BRANCH_NAME"
+git push --force-with-lease="$BRANCH_NAME:$ORIGINAL_REMOTE_SHA" origin "HEAD:$BRANCH_NAME"
 
 # Get PR number for this branch
 log_info "Looking up PR for branch: $BRANCH_NAME"
@@ -245,16 +232,17 @@ if [[ -n "$PR_NUMBER" ]]; then
     # Add comment to PR
     COMMENT_BODY="🤖 **Automatic go mod tidy completed**
 
-I ran \`go mod tidy\` in all modules to ensure dependencies are properly synchronized.
+I rebased this branch onto \`$BASE_BRANCH\` and ran \`go mod tidy\` in all modules to ensure dependencies are properly synchronized.
 
 **Modules updated:**
 $(printf -- '- %s\n' "${GO_MOD_DIRS[@]}")
 
 **Changes committed:**
+- Synced with \`$BASE_BRANCH\` (conflicting go.mod lines resolved in favor of this PR's changes)
 - Updated go.mod and go.sum files as needed
 - Ensured consistency across all Go modules
 
-The changes have been pushed to this branch."
+The branch has been force-pushed with lease."
 
     log_info "Adding comment to PR #$PR_NUMBER"
     gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY"
