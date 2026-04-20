@@ -205,7 +205,13 @@ fi
 
 # Stage all go.mod and go.sum files
 log_info "Staging go.mod and go.sum files..."
-git add */go.mod */go.sum go.mod go.sum 2>/dev/null || true
+for dir in "${GO_MOD_DIRS[@]}"; do
+    for f in go.mod go.sum; do
+        if [[ -f "$dir/$f" ]] || git ls-files --error-unmatch "$dir/$f" >/dev/null 2>&1; then
+            git add -A -- "$dir/$f"
+        fi
+    done
+done
 
 # Check if there are staged changes
 if git diff --cached --quiet; then
