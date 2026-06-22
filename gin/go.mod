@@ -42,7 +42,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/zostay/go-std v0.10.0 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.5 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
