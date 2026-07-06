@@ -3,7 +3,7 @@ module github.com/zostay/arrest-go
 go 1.25.7
 
 require (
-	github.com/pb33f/libopenapi v0.38.4
+	github.com/pb33f/libopenapi v0.38.5
 	github.com/stretchr/testify v1.11.1
 	github.com/zostay/go-std v0.10.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
