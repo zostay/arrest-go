@@ -106,4 +106,8 @@ jobs:
 
     - name: Run tests (polymorphic)
       working-directory: gin/examples/polymorphic
-      run: go test -v -race ./...
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Check test coverage (polymorphic)
+      working-directory: gin/examples/polymorphic
+      run: go tool cover -func=coverage.out
