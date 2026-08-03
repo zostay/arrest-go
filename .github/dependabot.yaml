@@ -32,6 +32,24 @@ updates:
       prefix: "deps(gin)"
       include: "scope"
 
+  # Enable version updates for the polymorphic example module. It is a third
+  # Go module (with replace directives back to / and /gin), so without its own
+  # entry its direct dependencies drift out of sync with the other two modules.
+  - package-ecosystem: "gomod"
+    directory: "/gin/examples/polymorphic"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "zostay"
+    assignees:
+      - "zostay"
+    commit-message:
+      prefix: "deps(polymorphic)"
+      include: "scope"
+
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
