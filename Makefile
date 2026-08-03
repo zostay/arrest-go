@@ -1,5 +1,5 @@
 # Makefile for arrest-go project
-# Supports both root module and gin submodule
+# Supports the root module, the gin submodule, and the polymorphic example module
 
 .PHONY: help test test-verbose test-race test-coverage build clean lint fmt vet mod-tidy mod-verify install-tools bench examples
 
@@ -14,18 +14,24 @@ test: ## Run tests in all modules
 	go test ./...
 	@echo "Running tests in gin module..."
 	cd gin && go test ./...
+	@echo "Running tests in polymorphic example module..."
+	cd gin/examples/polymorphic && go test ./...
 
 test-verbose: ## Run tests with verbose output in all modules
 	@echo "Running verbose tests in root module..."
 	go test -v ./...
 	@echo "Running verbose tests in gin module..."
 	cd gin && go test -v ./...
+	@echo "Running verbose tests in polymorphic example module..."
+	cd gin/examples/polymorphic && go test -v ./...
 
 test-race: ## Run tests with race detection in all modules
 	@echo "Running race tests in root module..."
 	go test -race ./...
 	@echo "Running race tests in gin module..."
 	cd gin && go test -race ./...
+	@echo "Running race tests in polymorphic example module..."
+	cd gin/examples/polymorphic && go test -race ./...
 
 test-coverage: ## Run tests with coverage in all modules
 	@echo "Running coverage tests in root module..."
@@ -34,12 +40,17 @@ test-coverage: ## Run tests with coverage in all modules
 	@echo "Running coverage tests in gin module..."
 	cd gin && go test -coverprofile=coverage.out ./...
 	cd gin && go tool cover -func=coverage.out
+	@echo "Running coverage tests in polymorphic example module..."
+	cd gin/examples/polymorphic && go test -coverprofile=coverage.out ./...
+	cd gin/examples/polymorphic && go tool cover -func=coverage.out
 
 bench: ## Run benchmarks in all modules
 	@echo "Running benchmarks in root module..."
 	go test -bench=. ./...
 	@echo "Running benchmarks in gin module..."
 	cd gin && go test -bench=. ./...
+	@echo "Running benchmarks in polymorphic example module..."
+	cd gin/examples/polymorphic && go test -bench=. ./...
 
 # Build targets
 build: ## Build all packages
@@ -47,6 +58,10 @@ build: ## Build all packages
 	go build ./...
 	@echo "Building gin module..."
 	cd gin && go build ./...
+	@echo "Building polymorphic example module..."
+# -o /dev/null: this module is a single main package, so a plain `go build`
+# would drop a `polymorphic` binary in the source tree.
+	cd gin/examples/polymorphic && go build -o /dev/null ./...
 
 clean: ## Clean build artifacts and test caches
 	@echo "Cleaning root module..."
@@ -55,6 +70,9 @@ clean: ## Clean build artifacts and test caches
 	@echo "Cleaning gin module..."
 	cd gin && go clean -cache -testcache
 	cd gin && rm -f coverage.out
+	@echo "Cleaning polymorphic example module..."
+	cd gin/examples/polymorphic && go clean -cache -testcache
+	cd gin/examples/polymorphic && rm -f coverage.out
 
 # Code quality targets
 lint: ## Run linters on all modules
@@ -62,18 +80,24 @@ lint: ## Run linters on all modules
 	golangci-lint run
 	@echo "Running linters on gin module..."
 	cd gin && golangci-lint run
+	@echo "Running linters on polymorphic example module..."
+	cd gin/examples/polymorphic && golangci-lint run
 
 fmt: ## Format code in all modules
 	@echo "Formatting root module..."
 	go fmt ./...
 	@echo "Formatting gin module..."
 	cd gin && go fmt ./...
+	@echo "Formatting polymorphic example module..."
+	cd gin/examples/polymorphic && go fmt ./...
 
 vet: ## Run go vet on all modules
 	@echo "Running go vet on root module..."
 	go vet ./...
 	@echo "Running go vet on gin module..."
 	cd gin && go vet ./...
+	@echo "Running go vet on polymorphic example module..."
+	cd gin/examples/polymorphic && go vet ./...
 
 # Module management targets
 mod-tidy: ## Run go mod tidy in all modules
@@ -81,18 +105,24 @@ mod-tidy: ## Run go mod tidy in all modules
 	go mod tidy
 	@echo "Running go mod tidy in gin module..."
 	cd gin && go mod tidy
+	@echo "Running go mod tidy in polymorphic example module..."
+	cd gin/examples/polymorphic && go mod tidy
 
 mod-verify: ## Verify modules in all modules
 	@echo "Verifying root module..."
 	go mod verify
 	@echo "Verifying gin module..."
 	cd gin && go mod verify
+	@echo "Verifying polymorphic example module..."
+	cd gin/examples/polymorphic && go mod verify
 
 mod-download: ## Download dependencies for all modules
 	@echo "Downloading dependencies for root module..."
 	go mod download
 	@echo "Downloading dependencies for gin module..."
 	cd gin && go mod download
+	@echo "Downloading dependencies for polymorphic example module..."
+	cd gin/examples/polymorphic && go mod download
 
 # Development tools
 install-tools: ## Install development tools

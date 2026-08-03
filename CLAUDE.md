@@ -354,7 +354,7 @@ The gin subpackage has its own go.mod and should be treated as a separate module
 ```bash
 cd gin && go test ./...                         # Test all gin functionality
 cd gin && go test ./examples/petstore/call      # Test Call method example
-cd gin && go test ./examples/polymorphic        # Test polymorphic functionality
+cd gin/examples/polymorphic && go test ./...    # Test polymorphic functionality (separate module)
 ```
 
 ### Running Examples

@@ -126,10 +126,10 @@ func TestCreateAnimal_Bird(t *testing.T) {
 	reqBody := CreateAnimalRequest{
 		AnimalType: "bird",
 		Bird: Bird{
-				CanFly:   true,
-				Name:     "Eagle",
-				Species:  "Bald Eagle",
-				Wingspan: 220,
+			CanFly:   true,
+			Name:     "Eagle",
+			Species:  "Bald Eagle",
+			Wingspan: 220,
 		},
 		Source: "test",
 	}
@@ -178,9 +178,9 @@ func TestCreateAnimal_ValidationError(t *testing.T) {
 	reqBody := CreateAnimalRequest{
 		AnimalType: "cat",
 		Cat: Cat{
-				Lives: 10, // Invalid: more than 9 lives
-				Name:  "Whiskers",
-				Color: "orange",
+			Lives: 10, // Invalid: more than 9 lives
+			Name:  "Whiskers",
+			Color: "orange",
 		},
 		Source: "test",
 	}
@@ -226,9 +226,9 @@ func TestCreateAnimal_BusinessError(t *testing.T) {
 	reqBody := CreateAnimalRequest{
 		AnimalType: "dog",
 		Dog: Dog{
-				Breed:  "Labrador",
-				Name:   "BadDog", // This triggers a business error
-				IsGood: true,
+			Breed:  "Labrador",
+			Name:   "BadDog", // This triggers a business error
+			IsGood: true,
 		},
 		Source: "test",
 	}
@@ -274,9 +274,9 @@ func TestCreateAnimal_SystemError(t *testing.T) {
 	reqBody := CreateAnimalRequest{
 		AnimalType: "dog",
 		Dog: Dog{
-				Breed:  "Labrador",
-				Name:   "Buddy",
-				IsGood: true,
+			Breed:  "Labrador",
+			Name:   "Buddy",
+			IsGood: true,
 		},
 		Source: "error", // This triggers a system error
 	}
@@ -479,12 +479,12 @@ func TestOpenAPISpecGeneration(t *testing.T) {
 	assert.Contains(t, spec, "SystemError")
 
 	// Verify polymorphic properties are included
-	assert.Contains(t, spec, "breed:")       // Dog property
-	assert.Contains(t, spec, "lives:")       // Cat property
-	assert.Contains(t, spec, "canFly:")      // Bird property
-	assert.Contains(t, spec, "doors:")       // Car property
-	assert.Contains(t, spec, "capacity:")    // Truck property
-	assert.Contains(t, spec, "ccs:")         // Motorcycle property
+	assert.Contains(t, spec, "breed:")    // Dog property
+	assert.Contains(t, spec, "lives:")    // Cat property
+	assert.Contains(t, spec, "canFly:")   // Bird property
+	assert.Contains(t, spec, "doors:")    // Car property
+	assert.Contains(t, spec, "capacity:") // Truck property
+	assert.Contains(t, spec, "ccs:")      // Motorcycle property
 
 	t.Logf("Generated OpenAPI spec:\n%s", spec)
 }
@@ -497,9 +497,9 @@ func TestControllerFunctions_DirectCall(t *testing.T) {
 	req := CreateAnimalRequest{
 		AnimalType: "dog",
 		Dog: Dog{
-				Breed:  "Beagle",
-				Name:   "Snoopy",
-				IsGood: true,
+			Breed:  "Beagle",
+			Name:   "Snoopy",
+			IsGood: true,
 		},
 		Source: "test",
 	}
@@ -517,9 +517,9 @@ func TestControllerFunctions_DirectCall(t *testing.T) {
 	invalidReq := CreateAnimalRequest{
 		AnimalType: "cat",
 		Cat: Cat{
-				Lives: 15, // Invalid: more than 9 lives
-				Name:  "Garfield",
-				Color: "orange",
+			Lives: 15, // Invalid: more than 9 lives
+			Name:  "Garfield",
+			Color: "orange",
 		},
 		Source: "test",
 	}
