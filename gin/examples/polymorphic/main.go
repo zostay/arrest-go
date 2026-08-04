@@ -90,6 +90,13 @@ func (e ValidationError) Error() string {
 	return fmt.Sprintf("validation error on field %s: %s", e.Field, e.Message)
 }
 
+// HTTPStatusCode implements arrestgin.HTTPStatusCoder. Implementing it is what
+// makes the handler serialize this concrete error type as-is; without it the
+// error is wrapped in the default ErrorResponse and reported as a 500.
+func (e ValidationError) HTTPStatusCode() int {
+	return http.StatusBadRequest
+}
+
 // BusinessError represents business logic errors
 type BusinessError struct {
 	ErrorCode string `json:"errorCode"`
@@ -101,6 +108,11 @@ func (e BusinessError) Error() string {
 	return fmt.Sprintf("business error %s: %s", e.ErrorCode, e.Details)
 }
 
+// HTTPStatusCode implements arrestgin.HTTPStatusCoder.
+func (e BusinessError) HTTPStatusCode() int {
+	return http.StatusBadRequest
+}
+
 // SystemError represents system-level errors
 type SystemError struct {
 	Component string `json:"component"`
@@ -110,6 +122,11 @@ type SystemError struct {
 
 func (e SystemError) Error() string {
 	return fmt.Sprintf("system error in %s: %s", e.Component, e.Message)
+}
+
+// HTTPStatusCode implements arrestgin.HTTPStatusCoder.
+func (e SystemError) HTTPStatusCode() int {
+	return http.StatusInternalServerError
 }
 
 // =============================================================================
