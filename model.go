@@ -161,9 +161,14 @@ func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc 
 			}
 
 			fieldProps.Set(fieldName, fSchema)
+			var required []string
+			if fieldInfo.IsRequired(field.Field.Type) {
+				required = []string{fieldName}
+			}
 			fieldSchema = base.CreateSchemaProxy(&base.Schema{
 				Type:       []string{"object"},
 				Properties: fieldProps,
+				Required:   required,
 			})
 		}
 
@@ -378,6 +383,10 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 	}
 
 	fieldProps := orderedmap.New[string, *base.SchemaProxy]()
+	// requiredByName tracks requiredness per JSON property name so that a
+	// later field with the same name (e.g. an outer field shadowing a promoted
+	// embedded field) replaces rather than duplicates the earlier entry.
+	requiredByName := map[string]bool{}
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if f.PkgPath != "" {
@@ -418,8 +427,17 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 				return base.CreateSchemaProxy(&base.Schema{}), err
 			}
 
+			// Fields promoted from a nil embedded pointer are omitted entirely
+			// by encoding/json, so nothing promoted through a pointer is required.
+			anonRequired := map[string]bool{}
+			if fType.Kind() != reflect.Ptr {
+				for _, name := range anonSchema.Schema().Required {
+					anonRequired[name] = true
+				}
+			}
 			for k, v := range anonSchema.Schema().Properties.FromOldest() {
 				fieldProps.Set(k, v)
+				requiredByName[k] = anonRequired[k]
 			}
 
 			continue
@@ -472,12 +490,23 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 		//}
 
 		fieldProps.Set(fName, fSchema)
+		requiredByName[fName] = info.IsRequired(fType)
+	}
+
+	required := make([]string, 0, len(requiredByName))
+	for name := range fieldProps.KeysFromOldest() {
+		if requiredByName[name] {
+			required = append(required, name)
+		}
 	}
 
 	schema := &base.Schema{
 		Description: doc,
 		Type:        []string{"object"},
 		Properties:  fieldProps,
+	}
+	if len(required) > 0 {
+		schema.Required = required
 	}
 
 	return base.CreateSchemaProxy(schema), nil

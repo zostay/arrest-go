@@ -330,6 +330,9 @@ components:
                     type: string
                 message:
                     type: string
+            required:
+                - code
+                - message
             description: An error response.
         zostay.arrest.test.v1.ListConnectionsResponse:
             type: object
@@ -338,6 +341,8 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connections
             description: The list of connection configurations.
         zostay.arrest.test.v1.Connection:
             type: object
@@ -362,35 +367,52 @@ components:
                         type: array
                         items:
                             type: string
+            required:
+                - id
+                - name
+                - description
+                - type
+                - properties
+                - secrets
         zostay.arrest.test.v1.CreateConnectionRequest:
             type: object
             properties:
                 connection:
                     $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connection
             description: The request to create a new connection configuration.
         zostay.arrest.test.v1.CreateConnectionResponse:
             type: object
             properties:
                 connection:
                     $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connection
             description: The response to creating a new connection configuration.
         zostay.arrest.test.v1.GetConnectionResponse:
             type: object
             properties:
                 connection:
                     $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connection
             description: The response to getting a connection configuration.
         zostay.arrest.test.v1.UpdateConnectionRequest:
             type: object
             properties:
                 connection:
                     $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connection
             description: The request to update a connection configuration.
         zostay.arrest.test.v1.UpdateConnectionResponse:
             type: object
             properties:
                 connection:
                     $ref: '#/components/schemas/zostay.arrest.test.v1.Connection'
+            required:
+                - connection
             description: The response to updating a connection configuration.
 `
 

@@ -83,6 +83,9 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - breed
+                  - name
               - type: object
                 properties:
                   lives:
@@ -90,12 +93,18 @@ paths:
                     format: int32
                   name:
                     type: string
+                required:
+                  - lives
+                  - name
               - type: object
                 properties:
                   canFly:
                     type: boolean
                   name:
                     type: string
+                required:
+                  - canFly
+                  - name
               discriminator:
                 propertyName: petType
                 mapping:
@@ -244,12 +253,18 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - furColor
+                  - name
               - type: object
                 properties:
                   canFly:
                     type: boolean
                   name:
                     type: string
+                required:
+                  - canFly
+                  - name
               discriminator:
                 propertyName: petType
                 mapping:

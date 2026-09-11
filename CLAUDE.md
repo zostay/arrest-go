@@ -102,6 +102,7 @@ doc.PackageMap("api.v1", "github.com/company/api/v1")
 ### Schema Generation
 - Uses reflection to convert Go types to OpenAPI schemas
 - Supports `json` and `openapi` struct tags for customization
+- Infers the `required` array for struct schemas: non-pointer fields without `omitempty`/`omitzero` are required; pointer or `omitempty` fields are optional; `openapi:",required"` / `openapi:",optional"` override
 - Extracts Go documentation for OpenAPI descriptions when `SkipDocumentation = false`
 - Automatically handles complex types (slices, maps, pointers, embedded structs)
 

@@ -39,6 +39,9 @@ paths:
                       type: string
                     tag:
                       type: string
+                  required:
+                    - id
+                    - name
         default:
           description: unexpected error
           content:
@@ -51,6 +54,9 @@ paths:
                     format: int32
                   message:
                     type: string
+                required:
+                  - code
+                  - message
     post:
       tags:
         - pets
@@ -76,6 +82,9 @@ paths:
                     format: int32
                   message:
                     type: string
+                required:
+                  - code
+                  - message
   /pets/{petId}:
     get:
       tags:
@@ -104,6 +113,9 @@ paths:
                     type: string
                   tag:
                     type: string
+                required:
+                  - id
+                  - name
         default:
           description: unexpected error
           content:
@@ -116,6 +128,9 @@ paths:
                     format: int32
                   message:
                     type: string
+                required:
+                  - code
+                  - message
 components:
   schemas:
     pet.v1.CreatePetRequest:
@@ -123,6 +138,8 @@ components:
       properties:
         pet:
           $ref: '#/components/schemas/pet.v1.Pet'
+      required:
+        - pet
     pet.v1.Pet:
       type: object
       properties:
@@ -133,3 +150,6 @@ components:
           type: string
         tag:
           type: string
+      required:
+        - id
+        - name

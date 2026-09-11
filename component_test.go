@@ -42,6 +42,9 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/test.v1.Test2Type'
+              required:
+                - test
+                - alsoTest
 components:
   schemas:
     test.v1.TestType:
@@ -49,11 +52,15 @@ components:
       properties:
         field:
           type: string
+      required:
+        - field
     test.v1.Test2Type:
       type: object
       properties:
         field:
           type: string
+      required:
+        - field
 `
 
 	doc, err := arrest.NewDocument("ComponentRefFromTagAlone")

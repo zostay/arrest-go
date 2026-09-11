@@ -14,7 +14,7 @@ type CreatePetRequest struct {
 type Pet struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
-	Tag  string `json:"tag"`
+	Tag  string `json:"tag,omitempty"`
 }
 
 type Pets []Pet
