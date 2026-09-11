@@ -1,0 +1,70 @@
+name: Release
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions: write-all
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+      - name: Release Version
+        run: echo RELEASE_VERSION=$(echo $GITHUB_REF_NAME | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+.*$') >> $GITHUB_ENV
+      - name: Version Check
+        run: |
+          if ! grep -q "$RELEASE_VERSION" version.txt; then
+              echo "version.txt does not match $RELEASE_VERSION!"
+              exit 1
+          fi
+      - name: Gin Module Requires Root at Release Version
+        run: |
+          if ! grep -Eq "^\s*github.com/zostay/arrest-go v$RELEASE_VERSION\b" gin/go.mod; then
+              echo "gin/go.mod must require github.com/zostay/arrest-go v$RELEASE_VERSION!"
+              grep -E "github.com/zostay/arrest-go v" gin/go.mod || true
+              exit 1
+          fi
+      - name: Set Time Zone to US Central
+        run: sudo timedatectl set-timezone America/Chicago
+      - name: Changes Heading Up-To-Date Check
+        run: |
+          date=$(date "+%Y-%m-%d")
+          header=$(head -n1 Changes.md)
+          if [ "$header" != "## $RELEASE_VERSION  $date" ]; then
+              echo "Changes.md is out of date!"
+              echo "Expected header: ## $RELEASE_VERSION  $date"
+              echo "Found header:    $header"
+              exit 1
+          else
+              echo "Changes.md heading looks good."
+          fi
+      - name: Release Notes Capture
+        run: |
+          sed -n '/^## [0-9]/{:loop n; /^## [0-9]/q; p; b loop}' Changes.md > release-notes.md
+          echo "Release Notes Will be..."
+          echo "========================"
+          cat release-notes.md
+      - name: Embedded Version Check
+        run: |
+          got=$(go run ./internal/cmd/version)
+          if [ "$got" != "$RELEASE_VERSION" ]; then
+              echo "arrest.Version is $got, expected $RELEASE_VERSION!"
+              exit 1
+          fi
+      - name: Tag Gin Module
+        # The gin integration is its own Go module in a subdirectory, so Go
+        # resolves its versions from tags prefixed with the directory.
+        run: |
+          git tag "gin/v$RELEASE_VERSION" "$GITHUB_SHA"
+          git push origin "gin/v$RELEASE_VERSION"
+      - name: Create Release
+        run: gh release create -t "v$RELEASE_VERSION" "v$RELEASE_VERSION" --draft --notes-file=release-notes.md
+      - name: Finalize Release
+        run: gh release edit "v$RELEASE_VERSION" --draft=false

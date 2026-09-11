@@ -42,6 +42,13 @@ make lint                        # Run golangci-lint in both modules
 make check                       # Run fmt + vet + lint
 ```
 
+### Releasing
+```bash
+cat version.txt                  # Current release version; embedded as arrest.Version
+head -n1 Changes.md              # Changelog; add a bullet under "## Unreleased" for any behaviour change
+```
+Releases go through a `release/vX.Y.Z` branch (checked by `.github/workflows/prepare.yaml`) and a `vX.Y.Z` tag (`.github/workflows/release.yaml`, which also tags `gin/vX.Y.Z` for the nested module). The `/release` skill in `.claude/skills/release` walks the process.
+
 ### Dependency Management
 ```bash
 make mod-tidy                    # Run go mod tidy in both modules
