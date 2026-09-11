@@ -181,8 +181,9 @@ doc.Post("/pets").
 - `WithErrorHandler(handler)` - Custom error processing function
 - `WithPanicProtection()` - Automatic panic recovery (now uses custom error handlers)
 - `WithRequestComponent()` - Register request type as reusable component
-- `WithResponseComponent()` - Register response type as reusable component
-- `WithComponents()` - Shorthand for both request and response components
+- `WithResponseComponent()` - Register response type as reusable component (a slice type registers its element and renders as an array of `$ref`)
+- `WithErrorComponent()` - Register the default `ErrorResponse` (as `ErrorResponse`, or its mapped name if the gin package is in `PackageMap`) and all custom error models as components, referenced from the `default` response
+- `WithComponents()` - Shorthand for request, response, and error components
 
 #### Enhanced Error Handling
 
@@ -255,6 +256,10 @@ errRef := arrest.SchemaRef(errModel.MappedName(doc.PkgMap))
 
 // Or with custom component name
 model := arrest.ModelFrom[User](doc, arrest.WithComponentName("UserModel"))
+
+// Or register an existing model (e.g. a composed one) after the fact
+doc.SchemaComponent("AnyError", arrest.OneOfTheseModels(doc, errA, errB))
+anyErrRef := arrest.SchemaRef("AnyError")
 ```
 
 **Key Changes**:

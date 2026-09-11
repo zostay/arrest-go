@@ -2,6 +2,7 @@ package arrest
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -313,6 +314,42 @@ func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Docum
 	}
 
 	c.SecuritySchemes.Set(fqn, m.SecurityScheme)
+
+	return d
+}
+
+// SchemaComponent registers the model's schema as a schema component under
+// fqn, along with any child schemas the model references by refName or
+// elemRefName. Pass an empty fqn to use the model's package-mapped name. Use
+// SchemaRef(fqn) to refer to the registered component elsewhere in the
+// document.
+//
+// This is the same registration that ModelFrom performs when given the
+// AsComponent option, exposed so that models built elsewhere (composed models,
+// models handed to another package) can be registered after the fact.
+func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
+	if fqn == "" {
+		fqn = m.MappedName(d.PkgMap)
+	}
+	if fqn == "" {
+		d.AddError(fmt.Errorf("cannot register schema component for a model with no name"))
+		return d
+	}
+
+	if d.DataModel.Model.Components == nil {
+		d.DataModel.Model.Components = &v3.Components{}
+	}
+	c := d.DataModel.Model.Components
+	if c.Schemas == nil {
+		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
+	}
+	c.Schemas.Set(sanitizeComponentName(fqn), m.SchemaProxy)
+
+	// Register child references only when parent is a component
+	for goPkg, sp := range m.ExtractChildRefs() {
+		childFqn := MappedName(goPkg, d.PkgMap)
+		c.Schemas.Set(childFqn, sp)
+	}
 
 	return d
 }

@@ -759,28 +759,43 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 
 	// Register as component if requested
 	if config.asComponent {
-		fqn := config.componentName
-		if fqn == "" {
-			fqn = m.MappedName(doc.PkgMap)
+		switch {
+		case config.componentName != "" || t.Name() != "":
+			doc.SchemaComponent(config.componentName, m)
+		case isSliceOfNamed(t):
+			// An unnamed slice has nothing to register under, but its element
+			// does: register the element and make this an array of references.
+			elemModel := ModelFromReflect(namedElem(t), doc, AsComponent())
+			m.SchemaProxy = base.CreateSchemaProxy(&base.Schema{
+				Type: []string{"array"},
+				Items: &base.DynamicValue[*base.SchemaProxy, bool]{
+					A: SchemaRef(elemModel.MappedName(doc.PkgMap)).SchemaProxy,
+				},
+			})
 		}
-
-		if doc.DataModel.Model.Components == nil {
-			doc.DataModel.Model.Components = &v3.Components{}
-		}
-		c := doc.DataModel.Model.Components
-		if c.Schemas == nil {
-			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
-		}
-		c.Schemas.Set(fqn, m.SchemaProxy)
-
-		// Register child references only when parent is a component
-		for goPkg, sp := range m.ExtractChildRefs() {
-			childFqn := MappedName(goPkg, doc.PkgMap)
-			c.Schemas.Set(childFqn, sp)
-		}
+		// Any other unnamed type cannot be a component and stays inline.
 	}
 
 	return m
+}
+
+// namedElem returns the element type of a slice or array with pointers
+// stripped.
+func namedElem(t reflect.Type) reflect.Type {
+	elem := t.Elem()
+	for elem.Kind() == reflect.Ptr {
+		elem = elem.Elem()
+	}
+	return elem
+}
+
+// isSliceOfNamed reports whether t is a slice or array whose element (after
+// stripping pointers) is a named type.
+func isSliceOfNamed(t reflect.Type) bool {
+	if t.Kind() != reflect.Slice && t.Kind() != reflect.Array {
+		return false
+	}
+	return namedElem(t).Name() != ""
 }
 
 // ModelFrom creates a new Model from a type with document context.

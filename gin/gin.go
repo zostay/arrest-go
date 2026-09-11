@@ -200,6 +200,7 @@ type callOptions struct {
 	panicProtection    bool
 	requestComponent   bool
 	responseComponent  bool
+	errorComponent     bool
 }
 
 // WithCallErrorModel adds a custom error model to the operation.
@@ -253,12 +254,30 @@ func WithResponseComponent() CallOption {
 	}
 }
 
-// WithComponents is a shorthand for enabling both request and response component registration.
-// Equivalent to using both WithRequestComponent() and WithResponseComponent().
+// WithErrorComponent enables component registration for the error models.
+// The default ErrorResponse and every model given via WithCallErrorModel,
+// WithPolymorphicError, or ReplaceCallErrorModel is registered under
+// components/schemas and referenced from the operation's default response
+// instead of being written inline. Each error model must be a named type
+// model (one made with arrest.ModelFrom) or an existing arrest.SchemaRef;
+// register a composed model with Document.SchemaComponent first and pass the
+// SchemaRef.
+//
+// The default ErrorResponse is registered as "ErrorResponse" unless the
+// document has a PackageMap entry covering this package.
+func WithErrorComponent() CallOption {
+	return func(o *callOptions) {
+		o.errorComponent = true
+	}
+}
+
+// WithComponents is a shorthand for enabling request, response, and error component registration.
+// Equivalent to using WithRequestComponent(), WithResponseComponent(), and WithErrorComponent().
 func WithComponents() CallOption {
 	return func(o *callOptions) {
 		o.requestComponent = true
 		o.responseComponent = true
+		o.errorComponent = true
 	}
 }
 
