@@ -1,9 +1,11 @@
 package arrest_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/zostay/arrest-go"
 )
@@ -82,4 +84,32 @@ components:
 	assert.NoError(t, err)
 	assert.YAMLEq(t, expected, string(got))
 	//assert.Equal(t, expected, string(got))
+}
+
+type PointerComponentUser struct {
+	Name string `json:"name"`
+}
+
+// AsComponent on a pointer type registers under the element type's name, and
+// SchemaComponent registers a model after the fact without duplicating it.
+func TestSchemaComponent_PointerAndExplicit(t *testing.T) {
+	t.Parallel()
+
+	doc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+	doc.PackageMap("test", "github.com/zostay/arrest-go_test")
+
+	ptrModel := arrest.ModelFrom[*PointerComponentUser](doc, arrest.AsComponent())
+	assert.Equal(t, "github.com/zostay/arrest-go_test.PointerComponentUser", ptrModel.Name)
+
+	composed := arrest.OneOfTheseModels(doc, ptrModel, arrest.ModelFrom[PointerComponentUser](doc))
+	doc.SchemaComponent("Either", composed)
+
+	require.NoError(t, doc.Err())
+
+	names := []string{}
+	for _, sc := range doc.SchemaComponents(context.Background()) {
+		names = append(names, sc.Name())
+	}
+	assert.ElementsMatch(t, []string{"test.PointerComponentUser", "Either"}, names)
 }

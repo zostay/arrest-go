@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	gin2 "github.com/gin-gonic/gin"
@@ -78,14 +79,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 		if hasBodyFields(inputType) {
 			// Use ModelFromReflect since we have the reflect.Type
 			if options.requestComponent {
-				// For component references, use the underlying type (strip pointer)
-				componentType := inputType
-				if componentType.Kind() == reflect.Ptr {
-					componentType = componentType.Elem()
-				}
-				inputModel := arrest.ModelFromReflect(componentType, o.Document, arrest.AsComponent())
-				inputRef := arrest.SchemaRef(inputModel.MappedName(o.Document.PkgMap))
-				o.RequestBody("application/json", inputRef)
+				o.RequestBody("application/json", o.componentModel(inputType))
 			} else {
 				inputModel := arrest.ModelFromReflect(inputType, o.Document)
 				o.RequestBody("application/json", inputModel)
@@ -114,15 +108,8 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 			}
 
 			if options.responseComponent {
-				// For component references, use the underlying type (strip pointer)
-				componentType := outputType
-				if componentType.Kind() == reflect.Ptr {
-					componentType = componentType.Elem()
-				}
-				outputModel := arrest.ModelFromReflect(componentType, o.Document, arrest.AsComponent())
-				outputRef := arrest.SchemaRef(outputModel.MappedName(o.Document.PkgMap))
 				r.Description(description).
-					Content("application/json", outputRef)
+					Content("application/json", o.componentModel(outputType))
 			} else {
 				outputModel := arrest.ModelFromReflect(outputType, o.Document)
 				r.Description(description).
@@ -132,28 +119,35 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 	}
 
 	// Configure error response
-	var errorModel *arrest.Model
+	var errorModels []*arrest.Model
 	if len(options.replaceErrorModels) > 0 {
 		// Replace default error models completely with custom error models
-		if len(options.replaceErrorModels) == 1 {
-			// Use single replace error model
-			errorModel = options.replaceErrorModels[0]
-		} else {
-			// Combine multiple replace error models using OneOf
-			errorModel = arrest.OneOfTheseModels(o.Document, options.replaceErrorModels...)
-		}
-	} else if len(options.errorModels) > 0 {
-		// Always include the default ErrorResponse along with custom error models
-		defaultErrorModel := arrest.ModelFrom[ErrorResponse](o.Document)
-		allErrorModels := make([]*arrest.Model, 0, len(options.errorModels)+1)
-		allErrorModels = append(allErrorModels, defaultErrorModel)
-		allErrorModels = append(allErrorModels, options.errorModels...)
-
-		// Combine default and custom error models using OneOf
-		errorModel = arrest.OneOfTheseModels(o.Document, allErrorModels...)
+		errorModels = options.replaceErrorModels
 	} else {
-		// Use default error model
-		errorModel = arrest.ModelFrom[ErrorResponse](o.Document)
+		// Always include the default ErrorResponse along with any custom error models
+		errorModels = make([]*arrest.Model, 0, len(options.errorModels)+1)
+		errorModels = append(errorModels, arrest.ModelFrom[ErrorResponse](o.Document))
+		errorModels = append(errorModels, options.errorModels...)
+	}
+
+	if options.errorComponent {
+		refs := make([]*arrest.Model, len(errorModels))
+		for i, m := range errorModels {
+			ref, err := o.errorComponentRef(m)
+			if err != nil {
+				return err
+			}
+			refs[i] = ref
+		}
+		errorModels = refs
+	}
+
+	var errorModel *arrest.Model
+	if len(errorModels) == 1 {
+		errorModel = errorModels[0]
+	} else {
+		// Combine error models using OneOf
+		errorModel = arrest.OneOfTheseModels(o.Document, errorModels...)
 	}
 
 	o.Response("default", func(r *arrest.Response) {
@@ -168,6 +162,49 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 
 	return nil
 }
+
+// componentModel registers t (with any pointer stripped) as a schema component
+// and returns a model that references it. A named type becomes a $ref; a slice
+// of a named type becomes an array of $ref to the element; any other unnamed
+// type has nothing to register under and is returned inline.
+func (o *Operation) componentModel(t reflect.Type) *arrest.Model {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	m := arrest.ModelFromReflect(t, o.Document, arrest.AsComponent())
+	if m.Name == "" {
+		return m
+	}
+	return arrest.SchemaRef(m.MappedName(o.Document.PkgMap))
+}
+
+// errorComponentRef registers an error model as a schema component and returns
+// a model that references it. A model that is already a reference is returned
+// as-is. The default ErrorResponse is registered simply as "ErrorResponse"
+// unless the document maps this package to an OpenAPI package name.
+func (o *Operation) errorComponentRef(m *arrest.Model) (*arrest.Model, error) {
+	if m.SchemaProxy != nil && m.SchemaProxy.IsReference() {
+		return m, nil
+	}
+
+	// Named type models carry "pkg/path.Type"; composed models carry a bare
+	// label like "OneOf" and unnamed types carry "".
+	if !strings.Contains(m.Name, ".") {
+		return nil, fmt.Errorf("error model %q cannot be registered as a component because it is not a named type; register it with Document.SchemaComponent and pass arrest.SchemaRef instead", m.Name)
+	}
+
+	fqn := m.MappedName(o.Document.PkgMap)
+	if m.Name == errorResponseTypeName && fqn == arrest.MappedName(m.Name, nil) {
+		fqn = "ErrorResponse"
+	}
+
+	o.Document.SchemaComponent(fqn, m)
+	return arrest.SchemaRef(fqn), nil
+}
+
+// errorResponseTypeName is the fully qualified Go type name of ErrorResponse,
+// as arrest.ModelFrom names it.
+var errorResponseTypeName = reflect.TypeOf(ErrorResponse{}).PkgPath() + "." + reflect.TypeOf(ErrorResponse{}).Name()
 
 // postProcessParameters post-processes generated parameters to handle additional properties like required
 // and filters out parameters that don't have explicit in= tags

@@ -692,7 +692,7 @@ func WithComponentName(name string) ModelOption {
 func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
-	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
+	name := typeName(t)
 	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
 	if m.SchemaProxy == nil {
 		panic(fmt.Sprintf("failed to create SchemaProxy for type %s: got nil", name))
@@ -759,28 +759,65 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 
 	// Register as component if requested
 	if config.asComponent {
-		fqn := config.componentName
-		if fqn == "" {
-			fqn = m.MappedName(doc.PkgMap)
+		switch {
+		case config.componentName != "" || isNamedType(t):
+			doc.SchemaComponent(config.componentName, m)
+		case isSliceOfNamed(t):
+			// An unnamed slice has nothing to register under, but its element
+			// does: register the element and make this an array of references.
+			elemModel := ModelFromReflect(elemType(t), doc, AsComponent())
+			m.SchemaProxy = base.CreateSchemaProxy(&base.Schema{
+				Type: []string{"array"},
+				Items: &base.DynamicValue[*base.SchemaProxy, bool]{
+					A: SchemaRef(elemModel.MappedName(doc.PkgMap)).SchemaProxy,
+				},
+			})
 		}
-
-		if doc.DataModel.Model.Components == nil {
-			doc.DataModel.Model.Components = &v3.Components{}
-		}
-		c := doc.DataModel.Model.Components
-		if c.Schemas == nil {
-			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
-		}
-		c.Schemas.Set(fqn, m.SchemaProxy)
-
-		// Register child references only when parent is a component
-		for goPkg, sp := range m.ExtractChildRefs() {
-			childFqn := MappedName(goPkg, doc.PkgMap)
-			c.Schemas.Set(childFqn, sp)
-		}
+		// Any other unnamed type cannot be a component and stays inline.
 	}
 
 	return m
+}
+
+// derefType strips any pointers from t.
+func derefType(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+// typeName returns the fully qualified Go name of t (pointers stripped), as
+// used for Model.Name. Unnamed and builtin types yield "".
+func typeName(t reflect.Type) string {
+	t = derefType(t)
+	if !isNamedType(t) {
+		return ""
+	}
+	return t.PkgPath() + "." + t.Name()
+}
+
+// isNamedType reports whether t (pointers stripped) is a type declared in
+// some package, i.e. one that has a name to register a component under.
+// Builtins like string have a name but no package and are excluded.
+func isNamedType(t reflect.Type) bool {
+	t = derefType(t)
+	return t.PkgPath() != "" && t.Name() != ""
+}
+
+// elemType returns the element type of a slice or array with pointers
+// stripped.
+func elemType(t reflect.Type) reflect.Type {
+	return derefType(t.Elem())
+}
+
+// isSliceOfNamed reports whether t is a slice or array whose element (after
+// stripping pointers) is a named type.
+func isSliceOfNamed(t reflect.Type) bool {
+	if t.Kind() != reflect.Slice && t.Kind() != reflect.Array {
+		return false
+	}
+	return isNamedType(elemType(t))
 }
 
 // ModelFrom creates a new Model from a type with document context.
@@ -794,7 +831,7 @@ func ModelFrom[T any](doc *Document, opts ...ModelOption) *Model {
 func ModelFromReflectOnly(t reflect.Type) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
-	name := strings.Join([]string{t.PkgPath(), t.Name()}, ".")
+	name := typeName(t)
 	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
 	if m.SchemaProxy == nil {
 		panic("nope")

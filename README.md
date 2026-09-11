@@ -574,8 +574,43 @@ doc.Post("/pets").Call(CreatePet,
     WithPanicProtection(),                    // Catch panics and convert to errors
     WithRequestComponent(),                   // Register request type as reusable component
     WithResponseComponent(),                  // Register response type as reusable component
-    WithComponents(),                         // Shorthand for both request and response components
+    WithErrorComponent(),                     // Register error models as reusable components
+    WithComponents(),                         // Shorthand for request, response, and error components
 )
+```
+
+#### Component Options
+
+By default every schema is written inline into each operation. The component
+options register the types under `components/schemas` and reference them with
+`$ref` instead, so client generators have a name for each type and the
+document does not repeat itself:
+
+- **`WithRequestComponent()`** / **`WithResponseComponent()`** register the
+  controller's input and output types. A slice return type (`[]Pet`) registers
+  the element and renders as an array of `$ref`. Anonymous types have nothing
+  to register under and stay inline.
+- **`WithErrorComponent()`** registers the default `ErrorResponse` and every
+  model passed to `WithCallErrorModel`, `WithPolymorphicError`, or
+  `ReplaceCallErrorModel`. `ErrorResponse` is registered under that bare name
+  unless the document maps the `github.com/zostay/arrest-go/gin` package with
+  `PackageMap`, in which case it takes the mapped name like any other type.
+  An error model must be a named type model (`arrest.ModelFrom[T]`) or an
+  `arrest.SchemaRef`; to use a composed model, register it yourself with
+  `doc.SchemaComponent("Name", model)` and pass `arrest.SchemaRef("Name")`.
+- **`WithComponents()`** enables all three. (Before error components existed
+  it covered only request and response; if you combine it with a composed
+  error model, register that model with `doc.SchemaComponent` and pass a
+  `SchemaRef`, or use `WithRequestComponent()` + `WithResponseComponent()`.)
+
+```yaml
+default:
+  content:
+    application/json:
+      schema:
+        oneOf:
+          - $ref: '#/components/schemas/ErrorResponse'
+          - $ref: '#/components/schemas/api.v1.Error'
 ```
 
 #### Error Handling Options
