@@ -538,7 +538,13 @@ This approach is particularly useful for:
 - Inferrence from Go types to reduce boilerplate and duplication
 - Comprehensive error reporting with context
 - Hot-reload support for development
-- Automatic documentation generation from your Godoc struct and field comments
+- Automatic documentation generation from your Godoc struct and field comments:
+  a type's doc comment becomes the schema description, and each field's doc
+  comment (or, failing that, its trailing line comment — the same rule
+  pkg.go.dev uses) becomes the property or parameter description, with the
+  leading Go field name rewritten to the JSON name. Because trailing comments
+  count, keep internal notes like `// TODO` off the fields of exported API
+  types, or set `arrest.SkipDocumentation = true`
 
 ## Framework Integration Features
 

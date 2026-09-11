@@ -19,33 +19,12 @@ paths:
             type: string
         - name: limit
           in: query
+          description: limit specifies the maximum number of pets to return
           required: true
           schema:
             type: integer
             format: int32
       responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  type:
-                    type: string
-                  message:
-                    type: string
-                  fields:
-                    type: object
-                    additionalProperties:
-                      type: string
-                required:
-                  - status
-                  - type
-                  - message
-                description: ErrorResponse represents the standard error response format.
         "200":
           description: Pets is an array of pets
           content:
@@ -66,6 +45,32 @@ paths:
                     - id
                     - name
                   description: Pet represents a pet in our system
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: always "error"
+                  type:
+                    type: string
+                    description: error type, e.g. "validation", "internal", etc.
+                  message:
+                    type: string
+                    description: general error message
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: validation messages per field
+                required:
+                  - status
+                  - type
+                  - message
+                description: ErrorResponse represents the standard error response format.
     post:
       tags:
         - pets
@@ -88,28 +93,6 @@ paths:
                 - pet
               description: CreatePetRequest represents the input for creating a pet
       responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  type:
-                    type: string
-                  message:
-                    type: string
-                  fields:
-                    type: object
-                    additionalProperties:
-                      type: string
-                required:
-                  - status
-                  - type
-                  - message
-                description: ErrorResponse represents the standard error response format.
         "200":
           description: Pet represents a pet in our system
           content:
@@ -128,6 +111,32 @@ paths:
                   - id
                   - name
                 description: Pet represents a pet in our system
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: always "error"
+                  type:
+                    type: string
+                    description: error type, e.g. "validation", "internal", etc.
+                  message:
+                    type: string
+                    description: general error message
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: validation messages per field
+                required:
+                  - status
+                  - type
+                  - message
+                description: ErrorResponse represents the standard error response format.
   /pets/{petId}:
     get:
       tags:
@@ -137,32 +146,11 @@ paths:
       parameters:
         - name: petId
           in: path
+          description: petId is the ID of the pet to retrieve
           required: true
           schema:
             type: string
       responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  type:
-                    type: string
-                  message:
-                    type: string
-                  fields:
-                    type: object
-                    additionalProperties:
-                      type: string
-                required:
-                  - status
-                  - type
-                  - message
-                description: ErrorResponse represents the standard error response format.
         "200":
           description: Pet represents a pet in our system
           content:
@@ -181,6 +169,32 @@ paths:
                   - id
                   - name
                 description: Pet represents a pet in our system
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: always "error"
+                  type:
+                    type: string
+                    description: error type, e.g. "validation", "internal", etc.
+                  message:
+                    type: string
+                    description: general error message
+                  fields:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: validation messages per field
+                required:
+                  - status
+                  - type
+                  - message
+                description: ErrorResponse represents the standard error response format.
 components:
   schemas:
     pet.v1.Pet:

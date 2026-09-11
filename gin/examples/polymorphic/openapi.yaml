@@ -85,14 +85,18 @@ paths:
                     properties:
                       status:
                         type: string
+                        description: always "error"
                       type:
                         type: string
+                        description: error type, e.g. "validation", "internal", etc.
                       message:
                         type: string
+                        description: general error message
                       fields:
                         type: object
                         additionalProperties:
                           type: string
+                        description: validation messages per field
                     required:
                       - status
                       - type
@@ -175,14 +179,18 @@ paths:
                     properties:
                       status:
                         type: string
+                        description: always "error"
                       type:
                         type: string
+                        description: error type, e.g. "validation", "internal", etc.
                       message:
                         type: string
+                        description: general error message
                       fields:
                         type: object
                         additionalProperties:
                           type: string
+                        description: validation messages per field
                     required:
                       - status
                       - type
@@ -304,14 +312,18 @@ paths:
                     properties:
                       status:
                         type: string
+                        description: always "error"
                       type:
                         type: string
+                        description: error type, e.g. "validation", "internal", etc.
                       message:
                         type: string
+                        description: general error message
                       fields:
                         type: object
                         additionalProperties:
                           type: string
+                        description: validation messages per field
                     required:
                       - status
                       - type
@@ -385,6 +397,50 @@ components:
       required:
         - id
         - createdAt
+    polymorphic.v1.Dog:
+      type: object
+      properties:
+        breed:
+          type: string
+        name:
+          type: string
+        isGood:
+          type: boolean
+      required:
+        - breed
+        - name
+        - isGood
+    polymorphic.v1.Cat:
+      type: object
+      properties:
+        lives:
+          type: integer
+          format: int32
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - lives
+        - name
+        - color
+    polymorphic.v1.Bird:
+      type: object
+      properties:
+        canFly:
+          type: boolean
+        name:
+          type: string
+        species:
+          type: string
+        wingspan:
+          type: integer
+          format: int32
+      required:
+        - canFly
+        - name
+        - species
+        - wingspan
     polymorphic.v1.Animal:
       oneOf:
         - type: object
@@ -435,50 +491,6 @@ components:
           cat: '#/components/schemas/polymorphic.v1.Cat'
           dog: '#/components/schemas/polymorphic.v1.Dog'
         defaultMapping: dog
-    polymorphic.v1.Dog:
-      type: object
-      properties:
-        breed:
-          type: string
-        name:
-          type: string
-        isGood:
-          type: boolean
-      required:
-        - breed
-        - name
-        - isGood
-    polymorphic.v1.Cat:
-      type: object
-      properties:
-        lives:
-          type: integer
-          format: int32
-        name:
-          type: string
-        color:
-          type: string
-      required:
-        - lives
-        - name
-        - color
-    polymorphic.v1.Bird:
-      type: object
-      properties:
-        canFly:
-          type: boolean
-        name:
-          type: string
-        species:
-          type: string
-        wingspan:
-          type: integer
-          format: int32
-      required:
-        - canFly
-        - name
-        - species
-        - wingspan
     polymorphic.v1.UpdateAnimalRequest:
       oneOf:
         - type: object
@@ -534,32 +546,18 @@ components:
       properties:
         status:
           type: string
+          description: always "error"
         type:
           type: string
+          description: error type, e.g. "validation", "internal", etc.
         message:
           type: string
+          description: general error message
         fields:
           type: object
           additionalProperties:
             type: string
-      required:
-        - status
-        - type
-        - message
-      description: ErrorResponse represents the standard error response format.
-    github.com.zostay.arrest-go.gin.ErrorResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        type:
-          type: string
-        message:
-          type: string
-        fields:
-          type: object
-          additionalProperties:
-            type: string
+          description: validation messages per field
       required:
         - status
         - type

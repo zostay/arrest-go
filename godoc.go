@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/doc"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -31,21 +32,32 @@ func goDocForFields(spec ast.Spec) map[string]fieldDoc {
 					continue
 				}
 
+				// Prefer the doc comment above the field; fall back to a
+				// trailing line comment, as gofmt'd code often documents
+				// short fields that way.
 				comment := ""
 				if field.Doc != nil {
 					comment = field.Doc.Text()
+				} else if field.Comment != nil {
+					comment = field.Comment.Text()
 				}
+				comment = strings.TrimSpace(comment)
 
+				// field.Tag.Value is the raw literal, backticks included;
+				// reflect.StructTag needs the unquoted form to find keys.
 				tag := ""
 				if field.Tag != nil {
-					tag = field.Tag.Value
+					if unquoted, err := strconv.Unquote(field.Tag.Value); err == nil {
+						tag = unquoted
+					}
 				}
 
-				fieldName := field.Names[0].Name
-				fieldComm[fieldName] = fieldDoc{
-					Name:    fieldName,
-					Comment: comment,
-					Tag:     reflect.StructTag(tag),
+				for _, name := range field.Names {
+					fieldComm[name.Name] = fieldDoc{
+						Name:    name.Name,
+						Comment: comment,
+						Tag:     reflect.StructTag(tag),
+					}
 				}
 			}
 		}
