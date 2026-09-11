@@ -598,7 +598,10 @@ document does not repeat itself:
   An error model must be a named type model (`arrest.ModelFrom[T]`) or an
   `arrest.SchemaRef`; to use a composed model, register it yourself with
   `doc.SchemaComponent("Name", model)` and pass `arrest.SchemaRef("Name")`.
-- **`WithComponents()`** enables all three.
+- **`WithComponents()`** enables all three. (Before error components existed
+  it covered only request and response; if you combine it with a composed
+  error model, register that model with `doc.SchemaComponent` and pass a
+  `SchemaRef`, or use `WithRequestComponent()` + `WithResponseComponent()`.)
 
 ```yaml
 default:

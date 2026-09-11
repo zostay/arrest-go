@@ -166,6 +166,40 @@ func TestCallMethod_WithErrorComponentOnly(t *testing.T) {
 	assert.Contains(t, spec, "\n    ErrorResponse:\n")
 	assert.NotContains(t, spec, "ComponentJot:")
 	assert.NotContains(t, spec, "oneOf:")
+	// The bare name replaces the qualified one; it must not appear twice.
+	assert.NotContains(t, spec, "github.com.zostay.arrest-go.gin.ErrorResponse")
+}
+
+func listComponentNames(ctx context.Context, input struct{}) ([]string, error) {
+	return nil, nil
+}
+
+// Pointer error models register under the element type's name, and a slice
+// of a builtin has nothing to register so it stays inline.
+func TestCallMethod_ErrorComponentPointerAndBuiltin(t *testing.T) {
+	t.Parallel()
+
+	arrestDoc, err := arrest.NewDocument("test")
+	require.NoError(t, err)
+	arrestDoc.PackageMap("test", "github.com/zostay/arrest-go/gin")
+
+	router := ginHTTP.New()
+	doc := NewDocument(arrestDoc, router)
+
+	doc.Get("/names").OperationID("listNames").
+		Call(listComponentNames,
+			WithCallErrorModel(arrest.ModelFrom[*ComponentAPIError](arrestDoc)),
+			WithComponents())
+
+	require.NoError(t, arrestDoc.Err())
+	oas, err := arrestDoc.OpenAPI.Render()
+	require.NoError(t, err)
+	spec := string(oas)
+
+	assert.Contains(t, spec, "$ref: '#/components/schemas/test.ComponentAPIError'")
+	assert.NotContains(t, spec, "'#/components/schemas'\n")
+	assert.NotContains(t, spec, ".string")
+	assert.Contains(t, spec, "type: array\n                items:\n                  type: string")
 }
 
 // ReplaceCallErrorModel models are registered too, and a SchemaRef passed as

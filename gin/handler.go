@@ -172,7 +172,7 @@ func (o *Operation) componentModel(t reflect.Type) *arrest.Model {
 		t = t.Elem()
 	}
 	m := arrest.ModelFromReflect(t, o.Document, arrest.AsComponent())
-	if t.Name() == "" {
+	if m.Name == "" {
 		return m
 	}
 	return arrest.SchemaRef(m.MappedName(o.Document.PkgMap))
@@ -187,6 +187,8 @@ func (o *Operation) errorComponentRef(m *arrest.Model) (*arrest.Model, error) {
 		return m, nil
 	}
 
+	// Named type models carry "pkg/path.Type"; composed models carry a bare
+	// label like "OneOf" and unnamed types carry "".
 	if !strings.Contains(m.Name, ".") {
 		return nil, fmt.Errorf("error model %q cannot be registered as a component because it is not a named type; register it with Document.SchemaComponent and pass arrest.SchemaRef instead", m.Name)
 	}

@@ -345,8 +345,13 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	}
 	c.Schemas.Set(sanitizeComponentName(fqn), m.SchemaProxy)
 
-	// Register child references only when parent is a component
+	// Register child references only when parent is a component. The model's
+	// own type is among its refs; it was registered under fqn above, so skip
+	// it rather than registering it a second time under its mapped name.
 	for goPkg, sp := range m.ExtractChildRefs() {
+		if goPkg == m.Name {
+			continue
+		}
 		childFqn := MappedName(goPkg, d.PkgMap)
 		c.Schemas.Set(childFqn, sp)
 	}
