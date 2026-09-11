@@ -161,9 +161,14 @@ func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc 
 			}
 
 			fieldProps.Set(fieldName, fSchema)
+			var required []string
+			if fieldInfo.IsRequired(field.Type) {
+				required = []string{fieldName}
+			}
 			fieldSchema = base.CreateSchemaProxy(&base.Schema{
 				Type:       []string{"object"},
 				Properties: fieldProps,
+				Required:   required,
 			})
 		}
 
@@ -378,6 +383,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 	}
 
 	fieldProps := orderedmap.New[string, *base.SchemaProxy]()
+	required := []string{}
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if f.PkgPath != "" {
@@ -421,6 +427,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 			for k, v := range anonSchema.Schema().Properties.FromOldest() {
 				fieldProps.Set(k, v)
 			}
+			required = append(required, anonSchema.Schema().Required...)
 
 			continue
 		} else {
@@ -472,12 +479,18 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 		//}
 
 		fieldProps.Set(fName, fSchema)
+		if info.IsRequired(fType) {
+			required = append(required, fName)
+		}
 	}
 
 	schema := &base.Schema{
 		Description: doc,
 		Type:        []string{"object"},
 		Properties:  fieldProps,
+	}
+	if len(required) > 0 {
+		schema.Required = required
 	}
 
 	return base.CreateSchemaProxy(schema), nil

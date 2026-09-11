@@ -81,6 +81,9 @@ components:
           type: string
         address:
           $ref: '#/components/schemas/zostay.test.Address'
+      required:
+        - name
+        - address
     zostay.test.Address:
       type: object
       properties:
@@ -88,6 +91,9 @@ components:
           type: string
         city:
           type: string
+      required:
+        - street
+        - city
 `
 
 type Address struct {
@@ -150,6 +156,9 @@ components:
           type: array
           items:
               $ref: '#/components/schemas/zostay.test.Address'
+      required:
+        - name
+        - addresses
     zostay.test.Address:
       type: object
       properties:
@@ -157,6 +166,9 @@ components:
           type: string
         city:
           type: string
+      required:
+        - street
+        - city
 `
 
 type PersonWithElemRefName struct {
@@ -218,6 +230,8 @@ components:
             $ref: '#/components/schemas/zostay.test.RecursiveStruct'
         parent:
           $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+      required:
+        - name
 `
 
 type RecursiveStruct struct {
@@ -281,6 +295,8 @@ components:
       properties:
         recursive:
           $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+      required:
+        - recursive
     zostay.test.RecursiveStruct:
       type: object
       properties:
@@ -292,6 +308,8 @@ components:
             $ref: '#/components/schemas/zostay.test.RecursiveStruct'
         parent:
           $ref: '#/components/schemas/zostay.test.RecursiveStruct'
+      required:
+        - name
 `
 
 type DeeperRecursiveStruct struct {
@@ -428,6 +446,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/zostay.test.Line'
+      required:
+        - description
     zostay.test.Line:
       type: object
       properties:
@@ -437,11 +457,15 @@ components:
           $ref: '#/components/schemas/zostay.test.Commodity'
         account:
           $ref: '#/components/schemas/zostay.test.Account'
+      required:
+        - description
     zostay.test.Commodity:
       type: object
       properties:
         name:
           type: string
+      required:
+        - name
     zostay.test.Account:
       type: object
       properties:
@@ -453,6 +477,8 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/zostay.test.Account'
+      required:
+        - name
 `
 
 func TestModelFrom_Ledger(t *testing.T) {
@@ -530,6 +556,10 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - petType
+                  - breed
+                  - name
               - type: object
                 properties:
                   petType:
@@ -539,6 +569,10 @@ paths:
                     format: int32
                   name:
                     type: string
+                required:
+                  - petType
+                  - lives
+                  - name
 `
 
 func TestOneOfTheseModels(t *testing.T) {
@@ -583,6 +617,10 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - petType
+                  - breed
+                  - name
               - type: object
                 properties:
                   petType:
@@ -592,6 +630,10 @@ paths:
                     format: int32
                   name:
                     type: string
+                required:
+                  - petType
+                  - lives
+                  - name
 `
 
 func TestAnyOfTheseModels(t *testing.T) {
@@ -636,6 +678,10 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - petType
+                  - breed
+                  - name
               - type: object
                 properties:
                   petType:
@@ -645,6 +691,10 @@ paths:
                     format: int32
                   name:
                     type: string
+                required:
+                  - petType
+                  - lives
+                  - name
 `
 
 func TestAllOfTheseModels(t *testing.T) {
@@ -689,6 +739,10 @@ paths:
                     type: string
                   name:
                     type: string
+                required:
+                  - petType
+                  - breed
+                  - name
               - type: object
                 properties:
                   petType:
@@ -698,6 +752,10 @@ paths:
                     format: int32
                   name:
                     type: string
+                required:
+                  - petType
+                  - lives
+                  - name
               - type: object
                 properties:
                   petType:
@@ -706,6 +764,10 @@ paths:
                     type: boolean
                   name:
                     type: string
+                required:
+                  - petType
+                  - canFly
+                  - name
               discriminator:
                 propertyName: petType
                 defaultMapping: dog
@@ -724,6 +786,10 @@ components:
           type: string
         name:
           type: string
+      required:
+        - petType
+        - breed
+        - name
     github.com.zostay.arrest-go_test.Cat:
       type: object
       properties:
@@ -734,6 +800,10 @@ components:
           format: int32
         name:
           type: string
+      required:
+        - petType
+        - lives
+        - name
     github.com.zostay.arrest-go_test.Bird:
       type: object
       properties:
@@ -743,6 +813,10 @@ components:
           type: boolean
         name:
           type: string
+      required:
+        - petType
+        - canFly
+        - name
 `
 
 func TestDiscriminatorWithOneOf(t *testing.T) {

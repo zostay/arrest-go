@@ -182,7 +182,33 @@ validators are still WIP).
 | `openapi:",in=path"`           | Path parameter           | `ID string \`json:"id" openapi:",in=path"\``               |
 | `openapi:",in=query,required"` | Required query parameter | `Name string \`json:"name" openapi:",in=query,required"\`` |
 | `openapi:"-"`                  | Exclude field completely | `Internal string \`openapi:"-"\``                          |
+| `openapi:",required"`          | Force field required     | `Tag *string \`json:"tag" openapi:",required"\``          |
+| `openapi:",optional"`          | Force field optional     | `Tag string \`json:"tag" openapi:",optional"\``           |
 | No tag                         | Request body field       | `Name string \`json:"name"\``                              |
+
+### Required Properties
+
+Object schemas generated from structs carry a `required` array inferred from
+the Go declaration, so generated clients don't treat every property as
+optional:
+
+- **Required**: a non-pointer field whose `json` tag has no `omitempty` (or
+  `omitzero`).
+- **Optional**: a pointer field, or any field tagged `omitempty`/`omitzero`.
+
+Use `openapi:",required"` or `openapi:",optional"` to override the inference
+for a field where the default guesses wrong. Fields promoted from embedded
+structs keep the requiredness of their original declaration.
+
+```go
+type Jot struct {
+    ID        string     `json:"id"`                  // required
+    Title     string     `json:"title"`               // required
+    Version   int32      `json:"version"`             // required
+    DeletedAt *time.Time `json:"deletedAt,omitempty"` // optional
+    Note      string     `json:"note" openapi:",optional"` // optional by override
+}
+```
 
 ## 🛠️ Manual Handler Example
 

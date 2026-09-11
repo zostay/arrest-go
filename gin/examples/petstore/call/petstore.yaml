@@ -41,6 +41,10 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
+                required:
+                  - status
+                  - type
+                  - message
                 description: ErrorResponse represents the standard error response format.
         "200":
           description: Pets is an array of pets
@@ -58,6 +62,9 @@ paths:
                       type: string
                     tag:
                       type: string
+                  required:
+                    - id
+                    - name
                   description: Pet represents a pet in our system
     post:
       tags:
@@ -77,6 +84,8 @@ paths:
               properties:
                 pet:
                   $ref: '#/components/schemas/pet.v1.Pet'
+              required:
+                - pet
               description: CreatePetRequest represents the input for creating a pet
       responses:
         default:
@@ -96,6 +105,10 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
+                required:
+                  - status
+                  - type
+                  - message
                 description: ErrorResponse represents the standard error response format.
         "200":
           description: Pet represents a pet in our system
@@ -111,6 +124,9 @@ paths:
                     type: string
                   tag:
                     type: string
+                required:
+                  - id
+                  - name
                 description: Pet represents a pet in our system
   /pets/{petId}:
     get:
@@ -142,6 +158,10 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
+                required:
+                  - status
+                  - type
+                  - message
                 description: ErrorResponse represents the standard error response format.
         "200":
           description: Pet represents a pet in our system
@@ -157,6 +177,9 @@ paths:
                     type: string
                   tag:
                     type: string
+                required:
+                  - id
+                  - name
                 description: Pet represents a pet in our system
 components:
   schemas:
@@ -170,4 +193,7 @@ components:
           type: string
         tag:
           type: string
+      required:
+        - id
+        - name
       description: Pet represents a pet in our system

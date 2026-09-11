@@ -172,3 +172,47 @@ func (info *TagInfo) IsOmitEmpty() bool {
 	}
 	return false
 }
+
+// IsOmitZero returns true if this field has omitzero (from json tag)
+func (info *TagInfo) IsOmitZero() bool {
+	parts := info.jsonTag.Parts()
+	for _, part := range parts[1:] {
+		if strings.TrimSpace(part) == "omitzero" {
+			return true
+		}
+	}
+	return false
+}
+
+// HasRequired returns true if the openapi tag explicitly marks the field as
+// required, e.g. `openapi:",required"`.
+func (info *TagInfo) HasRequired() bool {
+	_, exists := info.Props()["required"]
+	return exists
+}
+
+// HasOptional returns true if the openapi tag explicitly marks the field as
+// optional, e.g. `openapi:",optional"`.
+func (info *TagInfo) HasOptional() bool {
+	_, exists := info.Props()["optional"]
+	return exists
+}
+
+// IsRequired reports whether the field with this tag should be listed in the
+// schema's required array. An explicit `openapi:",required"` or
+// `openapi:",optional"` wins. Otherwise, a field is optional when it is a
+// pointer or when its json tag carries omitempty/omitzero, and required in
+// every other case.
+func (info *TagInfo) IsRequired(t reflect.Type) bool {
+	switch {
+	case info.HasRequired():
+		return true
+	case info.HasOptional():
+		return false
+	case t.Kind() == reflect.Ptr:
+		return false
+	case info.IsOmitEmpty() || info.IsOmitZero():
+		return false
+	}
+	return true
+}
