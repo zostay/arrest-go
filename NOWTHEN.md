@@ -28,9 +28,24 @@ force-pushes contributor branches — reach for it only deliberately.
 
 ## Releasing
 
-There are no version tags and never have been, so consumers pick this up at a
-pseudo-version from `master`. Merging to `master` is the whole of shipping
-today. If a tagged release is ever wanted, that is a decision, not a routine.
+Releases are tagged. A `release/vX.Y.Z` branch is the dry run
+(`.github/workflows/prepare.yaml` checks `version.txt`, `gin/go.mod`, and the
+`Changes.md` heading); merging it and pushing the `vX.Y.Z` tag runs
+`.github/workflows/release.yaml`, which repeats the checks, pushes the
+`gin/vX.Y.Z` tag the nested Gin module needs, and publishes the GitHub release
+from the changelog section. The `/release` skill in `.claude/skills/release`
+drives this and asks a human to confirm the version, so cutting a release is
+not unattended work.
+
+Two checks are strict enough to be worth knowing in advance: `gin/go.mod` must
+`require github.com/zostay/arrest-go vX.Y.Z` (its `replace` hides that line
+locally, but consumers see it), and the first line of `Changes.md` must be
+exactly `## X.Y.Z  YYYY-MM-DD` (two spaces) with the date being *today in
+America/Chicago* at the moment the workflow runs — so a release straddling the
+Central midnight fails at the tag even though the branch passed.
+
+Between releases, changes land under a `## Unreleased` heading at the top of
+`Changes.md`; every PR that changes behaviour should add a bullet there.
 
 ## Upkeep
 
