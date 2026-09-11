@@ -1,4 +1,4 @@
-## Unreleased
+## 0.1.0  2026-09-11
 
  * First tagged release. Until now consumers have pulled this module at a
    pseudo-version from `master`; from here on releases are tagged `vX.Y.Z` for
