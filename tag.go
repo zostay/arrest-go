@@ -185,17 +185,31 @@ func (info *TagInfo) IsOmitZero() bool {
 }
 
 // HasRequired returns true if the openapi tag explicitly marks the field as
-// required, e.g. `openapi:",required"`.
+// required: `openapi:",required"`, `openapi:",required=true"`, or
+// `openapi:",optional=false"`.
 func (info *TagInfo) HasRequired() bool {
-	_, exists := info.Props()["required"]
-	return exists
+	props := info.Props()
+	if v, ok := props["required"]; ok {
+		return v != "false"
+	}
+	if v, ok := props["optional"]; ok {
+		return v == "false"
+	}
+	return false
 }
 
 // HasOptional returns true if the openapi tag explicitly marks the field as
-// optional, e.g. `openapi:",optional"`.
+// optional: `openapi:",optional"`, `openapi:",optional=true"`, or
+// `openapi:",required=false"`.
 func (info *TagInfo) HasOptional() bool {
-	_, exists := info.Props()["optional"]
-	return exists
+	props := info.Props()
+	if v, ok := props["optional"]; ok {
+		return v != "false"
+	}
+	if v, ok := props["required"]; ok {
+		return v == "false"
+	}
+	return false
 }
 
 // IsRequired reports whether the field with this tag should be listed in the

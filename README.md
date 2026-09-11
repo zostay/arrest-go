@@ -197,8 +197,12 @@ optional:
 - **Optional**: a pointer field, or any field tagged `omitempty`/`omitzero`.
 
 Use `openapi:",required"` or `openapi:",optional"` to override the inference
-for a field where the default guesses wrong. Fields promoted from embedded
-structs keep the requiredness of their original declaration.
+for a field where the default guesses wrong (`required=false` and
+`optional=false` are honored as the opposite flag). Fields promoted from an
+embedded struct keep the requiredness of their original declaration, except
+that nothing promoted through an embedded *pointer* is required, since
+`encoding/json` omits all of those fields when the pointer is nil. An outer
+field that shadows a promoted field decides for itself.
 
 ```go
 type Jot struct {
