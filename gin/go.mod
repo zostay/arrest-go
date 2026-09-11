@@ -7,7 +7,7 @@ replace github.com/zostay/arrest-go => ../
 require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/stretchr/testify v1.12.1
-	github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658
+	github.com/zostay/arrest-go v0.1.0
 )
 
 require (

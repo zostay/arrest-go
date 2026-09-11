@@ -5,8 +5,8 @@ go 1.25.7
 require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/stretchr/testify v1.12.1
-	github.com/zostay/arrest-go v0.0.0-20241114043916-f21d26102658
-	github.com/zostay/arrest-go/gin v0.0.0-20251011075439-94123184432d
+	github.com/zostay/arrest-go v0.1.0
+	github.com/zostay/arrest-go/gin v0.1.0
 )
 
 require (
