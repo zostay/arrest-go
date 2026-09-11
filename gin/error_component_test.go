@@ -94,14 +94,18 @@ components:
       properties:
         status:
           type: string
+          description: always "error"
         type:
           type: string
+          description: error type, e.g. "validation", "internal", etc.
         message:
           type: string
+          description: general error message
         fields:
           type: object
           additionalProperties:
             type: string
+          description: validation messages per field
       required:
         - status
         - type

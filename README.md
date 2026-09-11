@@ -538,7 +538,10 @@ This approach is particularly useful for:
 - Inferrence from Go types to reduce boilerplate and duplication
 - Comprehensive error reporting with context
 - Hot-reload support for development
-- Automatic documentation generation from your Godoc struct and field comments
+- Automatic documentation generation from your Godoc struct and field comments:
+  a type's doc comment becomes the schema description, and each field's doc
+  comment (or trailing line comment) becomes the property or parameter
+  description, with the leading Go field name rewritten to the JSON name
 
 ## Framework Integration Features
 
