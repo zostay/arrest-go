@@ -42,6 +42,14 @@ make lint                        # Run golangci-lint in both modules
 make check                       # Run fmt + vet + lint
 ```
 
+### Compile Cost
+```bash
+make compile-cost                        # Functions emitted into, and recompile time of, a package naming each public type
+scripts/compile-cost -cold               # Plus a cold build of the probe module and its critical path
+scripts/compile-cost -consumer ../app    # Plus cold builds of a real consumer, as released and with this checkout
+```
+The Go compiler re-emits every generic method reachable from an imported type into the importing package (golang/go#70511), so a consumer that names `*arrest.Document` pays for libopenapi's whole model. `internal/compilecost` measures that and `TestGuard` there fails when a probe exceeds `MaxFuncs`; the epic is issue #99. Any change to a public type's fields or method signatures should be checked with `make compile-cost`.
+
 ### Releasing
 ```bash
 cat version.txt                  # Current release version; embedded as arrest.Version

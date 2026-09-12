@@ -1,3 +1,13 @@
+## Unreleased
+
+ * Added `scripts/compile-cost` (`make compile-cost`) and the
+   `internal/compilecost` package, which measure what a consumer pays to
+   compile against arrest-go: the functions the compiler emits into a package
+   that names each public type, how long such a package takes to recompile,
+   and, with `-cold` or `-consumer`, a cold build's critical path or a real
+   module's before-and-after timings. A guard test holds every probe under a
+   threshold that comes down as the cost is cut. (#104)
+
 ## 0.1.0  2026-09-11
 
  * First tagged release. Until now consumers have pulled this module at a
