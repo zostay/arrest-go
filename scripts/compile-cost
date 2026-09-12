@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Report what it costs a consumer to compile against this checkout of
+# arrest-go: the functions the compiler emits into a package that names each
+# public type (the generic-instantiation cascade, see issue #99), how long
+# each such package takes to recompile, and — with flags — a cold build's
+# critical path or a real consumer's before-and-after timings.
+#
+#   scripts/compile-cost                    probes only
+#   scripts/compile-cost -cold              plus a cold build and its critical path
+#   scripts/compile-cost -consumer ../app   plus cold builds of ../app, as released and with this checkout
+#   scripts/compile-cost -help              every flag
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec go run ./internal/cmd/compilecost "$@"

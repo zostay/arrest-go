@@ -1,7 +1,7 @@
 # Makefile for arrest-go project
 # Supports the root module, the gin submodule, and the polymorphic example module
 
-.PHONY: help test test-verbose test-race test-coverage build clean lint fmt vet mod-tidy mod-verify install-tools bench examples
+.PHONY: help test test-verbose test-race test-coverage build clean lint fmt vet mod-tidy mod-verify install-tools bench examples compile-cost
 
 # Default target
 help: ## Show this help message
@@ -51,6 +51,9 @@ bench: ## Run benchmarks in all modules
 	cd gin && go test -bench=. ./...
 	@echo "Running benchmarks in polymorphic example module..."
 	cd gin/examples/polymorphic && go test -bench=. ./...
+
+compile-cost: ## Report what a consumer pays to compile against this checkout (see issue #99)
+	scripts/compile-cost
 
 # Build targets
 build: ## Build all packages
