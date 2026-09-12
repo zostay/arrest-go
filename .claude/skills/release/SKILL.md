@@ -94,8 +94,8 @@ This shell has `noclobber` set, so use `>|` when overwriting a file.
 
 ```bash
 printf '%s\n' "X.Y.Z" >| version.txt
-sed -i '' -E 's#^(\s*github.com/zostay/arrest-go) v[0-9].*$#\1 vX.Y.Z#' gin/go.mod
-sed -i '' -E 's#^(\s*github.com/zostay/arrest-go) v[0-9].*$#\1 vX.Y.Z#; s#^(\s*github.com/zostay/arrest-go/gin) v[0-9].*$#\1 vX.Y.Z#' gin/examples/polymorphic/go.mod
+sed -i '' -E 's#^([[:space:]]*github.com/zostay/arrest-go) v[0-9].*$#\1 vX.Y.Z#' gin/go.mod
+sed -i '' -E 's#^([[:space:]]*github.com/zostay/arrest-go) v[0-9].*$#\1 vX.Y.Z#; s#^([[:space:]]*github.com/zostay/arrest-go/gin) v[0-9].*$#\1 vX.Y.Z#' gin/examples/polymorphic/go.mod
 make mod-tidy
 ```
 
@@ -115,7 +115,7 @@ Verify by running the same checks the workflows run:
 ```bash
 RELEASE_VERSION=X.Y.Z
 grep -q "$RELEASE_VERSION" version.txt && echo "version.txt PASS"
-grep -Eq "^\s*github.com/zostay/arrest-go v$RELEASE_VERSION\b" gin/go.mod && echo "gin/go.mod PASS"
+grep -Eq "^[[:space:]]*github.com/zostay/arrest-go v$RELEASE_VERSION\b" gin/go.mod && echo "gin/go.mod PASS"
 date=$(TZ=America/Chicago date "+%Y-%m-%d")
 [ "$(head -n1 Changes.md)" = "## $RELEASE_VERSION  $date" ] && echo "heading PASS"
 grep -c '^## Unreleased' Changes.md    # must be 0
