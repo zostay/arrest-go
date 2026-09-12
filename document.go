@@ -80,9 +80,40 @@ func buildModel(bs []byte) (*DocumentModel, error) {
 	return &DocumentModel{Model: *highDoc, Index: lowDoc.Index}, nil
 }
 
-// Render renders the document as YAML.
+// Render renders the document as YAML, with the schema and security scheme
+// components in name order, so that the same handlers always render the same
+// document whatever order they were declared in.
 func (d *Document) Render() ([]byte, error) {
+	d.sortComponents()
 	return d.DataModel.Model.RenderWithIndention(2), nil
+}
+
+// sortComponents puts the document's schema and security scheme components
+// in name order.
+func (d *Document) sortComponents() {
+	c := d.DataModel.Model.Components
+	if c == nil {
+		return
+	}
+	c.Schemas = sortedMap(c.Schemas)
+	c.SecuritySchemes = sortedMap(c.SecuritySchemes)
+}
+
+// sortedMap returns m with its keys in order, or m itself when it is nil.
+func sortedMap[V any](m *orderedmap.Map[string, V]) *orderedmap.Map[string, V] {
+	if m == nil {
+		return nil
+	}
+	keys := make([]string, 0, m.Len())
+	for k := range m.KeysFromOldest() {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	sorted := orderedmap.New[string, V]()
+	for _, k := range keys {
+		sorted.Set(k, m.GetOrZero(k))
+	}
+	return sorted
 }
 
 // NewDocument creates a new Document with the given title.
@@ -384,7 +415,7 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	// Register child references only when parent is a component. The model's
 	// own type is among its refs; it was registered under fqn above, so skip
 	// it rather than registering it a second time under its mapped name.
-	for goPkg, sp := range m.ExtractChildRefs() {
+	for goPkg, sp := range sortedRefs(m.ExtractChildRefs()) {
 		if goPkg == m.Name {
 			continue
 		}
