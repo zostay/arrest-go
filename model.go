@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
+	"maps"
 	"path"
 	"reflect"
 	"slices"
@@ -370,6 +372,18 @@ func (m *Model) ExtractComponentRefs() map[string]*base.SchemaProxy {
 	return m.componentRefs
 }
 
+// sortedRefs yields refs in name order. Registering components from a Go
+// map's own iteration order would list them differently on every run.
+func sortedRefs(refs map[string]*base.SchemaProxy) iter.Seq2[string, *base.SchemaProxy] {
+	return func(yield func(string, *base.SchemaProxy) bool) {
+		for _, name := range slices.Sorted(maps.Keys(refs)) {
+			if !yield(name, refs[name]) {
+				return
+			}
+		}
+	}
+}
+
 func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	// Check if this is a polymorphic struct first
 	if polymorphInfo, isPolymorphic := detectPolymorphicStruct(t); isPolymorphic {
@@ -733,7 +747,7 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 		if c.Schemas == nil {
 			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
 		}
-		for goPkg, sp := range m.ExtractComponentRefs() {
+		for goPkg, sp := range sortedRefs(m.ExtractComponentRefs()) {
 			if (sp == nil) || (sp.Schema() == nil) {
 				doc.AddError(fmt.Errorf("failed while registering component reference for model %s, the package %s has not be given a schema proxy object; this may happen when refName and elemRefName are not consistently set", m.Name, goPkg))
 				continue

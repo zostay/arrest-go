@@ -1,5 +1,11 @@
 ## Unreleased
 
+ * The order of `components.schemas` is now deterministic: child components
+   are registered in name order rather than a Go map's iteration order, and
+   `Render()` (and so `Refresh()`) puts the schema and security scheme
+   components in name order however they were declared. A document
+   regenerated from unchanged handlers renders byte-for-byte the same, and
+   consumers no longer need to sort the components themselves. (#102)
  * The `libopenapi` root package is no longer imported. It brought the
    Swagger 2, Arazzo, overlay and what-changed packages — ten packages this
    library never used — into every consumer's build, about 12 CPU-seconds and
