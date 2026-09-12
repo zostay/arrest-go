@@ -80,7 +80,7 @@ components:
 		RequestBody("application/json", arrest.ModelFrom[TestReq](doc))
 
 	assert.NoError(t, doc.Err())
-	got, err := doc.OpenAPI.Render()
+	got, err := doc.Render()
 	assert.NoError(t, err)
 	assert.YAMLEq(t, expected, string(got))
 	//assert.Equal(t, expected, string(got))

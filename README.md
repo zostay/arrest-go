@@ -141,7 +141,7 @@ func main() {
 
 	// Add OpenAPI spec endpoint
 	router.GET("/openapi.yaml", func(c *gin.Context) {
-		spec, err := arrestDoc.OpenAPI.Render()
+		spec, err := arrestDoc.Render()
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -315,7 +315,7 @@ func main() {
 		panic(doc.Err())
 	}
 
-	rend, err := doc.OpenAPI.Render()
+	rend, err := doc.Render()
 	if err != nil {
 		panic(err)
 	}
@@ -452,7 +452,7 @@ paths:
 	}
 
 	// Render the modified document
-	rendered, err := doc.OpenAPI.Render()
+	rendered, err := doc.Render()
 	if err != nil {
 		log.Fatal("Failed to render document:", err)
 	}

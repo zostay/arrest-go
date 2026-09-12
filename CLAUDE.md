@@ -143,7 +143,7 @@ func TestModelFrom_Example(t *testing.T) {
     })
     
     assert.NoError(t, doc.Err())
-    oas, err := doc.OpenAPI.Render()
+    oas, err := doc.Render()
     require.NoError(t, err)
     assert.YAMLEq(t, expected, string(oas))
 }

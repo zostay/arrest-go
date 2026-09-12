@@ -54,7 +54,7 @@ func TestModelFrom_WithOneOf(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_WithOneOf, string(oas))
@@ -127,7 +127,7 @@ func TestModelFrom_RefName(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_RefName, string(oas))
@@ -197,7 +197,7 @@ func TestModelFrom_ElemRefName(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_ElemRefName, string(oas))
@@ -267,7 +267,7 @@ func TestModelFrom_RecursiveStruct(t *testing.T) {
 	assert.NoError(t, doc.Err())
 
 	// Should be able to render without hanging
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 	assert.NotEmpty(t, oas)
 
@@ -343,7 +343,7 @@ func TestModelFrom_DeeperRecursiveStruct(t *testing.T) {
 	assert.NoError(t, doc.Err())
 
 	// Should be able to render without hanging
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 	assert.NotEmpty(t, oas)
 
@@ -511,7 +511,7 @@ func TestModelFrom_Ledger(t *testing.T) {
 		})
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_LedgerRequest, string(oas))
@@ -592,7 +592,7 @@ func TestOneOfTheseModels(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_OneOfTheseModels, string(oas))
@@ -653,7 +653,7 @@ func TestAnyOfTheseModels(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_AnyOfTheseModels, string(oas))
@@ -714,7 +714,7 @@ func TestAllOfTheseModels(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_AllOfTheseModels, string(oas))
@@ -842,7 +842,7 @@ func TestDiscriminatorWithOneOf(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_DiscriminatorOneOf, string(oas))

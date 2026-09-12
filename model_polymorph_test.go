@@ -128,7 +128,7 @@ func TestImplicitPolymorphicPet(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_ImplicitPolymorphicPet, string(oas))
@@ -197,7 +197,7 @@ func TestImplicitPolymorphicVehicleWithComponents(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	// Use a more specific assertion approach due to order sensitivity
@@ -287,7 +287,7 @@ func TestImplicitPolymorphicAnyOf(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, expected_ImplicitPolymorphicAnyOf, string(oas))

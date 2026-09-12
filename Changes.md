@@ -1,5 +1,13 @@
 ## Unreleased
 
+ * The `libopenapi` root package is no longer imported. It brought the
+   Swagger 2, Arazzo, overlay and what-changed packages — ten packages this
+   library never used — into every consumer's build, about 12 CPU-seconds and
+   4 seconds of a cold build's critical path. `Document.OpenAPI` is gone;
+   render with `doc.Render()` instead of `doc.OpenAPI.Render()`.
+   `Document.DataModel` is now an `arrest.DocumentModel` with the same `Model`
+   and `Index` fields, so `doc.DataModel.Model` is unchanged. `NewDocumentFrom`
+   takes a `*v3.Document`. (#100)
  * Added `scripts/compile-cost` (`make compile-cost`) and the
    `internal/compilecost` package, which measure what a consumer pays to
    compile against arrest-go: the functions the compiler emits into a package

@@ -6,9 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/high/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
@@ -17,13 +19,20 @@ type PackageMap struct {
 	GoName      string
 }
 
+// DocumentModel is the built v3 model of a document together with the index
+// built alongside it: the same shape as libopenapi.DocumentModel[v3.Document],
+// defined here so that this package does not import the libopenapi root
+// package, which would bring the Swagger 2, Arazzo, overlay and what-changed
+// packages into every consumer's build.
+type DocumentModel struct {
+	Model v3.Document
+	Index *index.SpecIndex
+}
+
 // Document providees DSL methods for creating OpenAPI documents.
 type Document struct {
-	// OpenAPI is the underlying OpenAPI document.
-	OpenAPI libopenapi.Document
-
 	// DataModel is the v3 DataModel from the document.
-	DataModel *libopenapi.DocumentModel[v3.Document]
+	DataModel *DocumentModel
 
 	// PackageMap maps OpenAPI "package names" to Go package names. This is
 	// used in SchemaComponentRef.
@@ -32,28 +41,48 @@ type Document struct {
 	ErrHelper
 }
 
-// NewDocumentFromBytes creates a new Document from raw YAML bytes.
+// NewDocumentFromBytes creates a new Document from raw YAML or JSON bytes.
 func NewDocumentFromBytes(bs []byte) (*Document, error) {
-	doc, err := libopenapi.NewDocument(bs)
+	dm, err := buildModel(bs)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewDocumentFrom(doc)
+	return &Document{DataModel: dm}, nil
 }
 
 // NewDocumentFrom creates a new Document from a v3.Document. This allows you
-// to add to an existing document using the DSL.
-func NewDocumentFrom(doc libopenapi.Document) (*Document, error) {
-	dm, err := doc.BuildV3Model()
+// to add to an existing document using the DSL. The document is rendered and
+// reloaded, so the DSL works on a freshly indexed copy rather than on doc.
+func NewDocumentFrom(doc *v3.Document) (*Document, error) {
+	return NewDocumentFromBytes(doc.RenderWithIndention(2))
+}
+
+// buildModel does what libopenapi.NewDocument followed by BuildV3Model does,
+// without the libopenapi root package.
+func buildModel(bs []byte) (*DocumentModel, error) {
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(bs, false)
+	if err != nil {
+		return nil, err
+	}
+	if info.SpecFormat != datamodel.OAS3 && info.SpecFormat != datamodel.OAS31 && info.SpecFormat != datamodel.OAS32 {
+		return nil, fmt.Errorf("unable to build openapi document, supplied spec is a different version (%v)", info.SpecFormat)
+	}
+
+	lowDoc, err := v3low.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		return nil, err
 	}
 
-	return &Document{
-		OpenAPI:   doc,
-		DataModel: dm,
-	}, nil
+	highDoc := v3.NewDocument(lowDoc)
+	highDoc.Rolodex = lowDoc.Index.GetRolodex()
+
+	return &DocumentModel{Model: *highDoc, Index: lowDoc.Index}, nil
+}
+
+// Render renders the document as YAML.
+func (d *Document) Render() ([]byte, error) {
+	return d.DataModel.Model.RenderWithIndention(2), nil
 }
 
 // NewDocument creates a new Document with the given title.
@@ -69,8 +98,15 @@ func NewDocument(title string) (*Document, error) {
 	return NewDocumentFromBytes(bs)
 }
 
+// Refresh renders the document and reloads it, so that the model and its
+// index reflect everything the DSL has added.
 func (d *Document) Refresh() error {
-	_, _, dm, err := d.OpenAPI.RenderAndReload()
+	bs, err := d.Render()
+	if err != nil {
+		return err
+	}
+
+	dm, err := buildModel(bs)
 	if err != nil {
 		return err
 	}

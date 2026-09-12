@@ -142,7 +142,7 @@ func TestCallMethod_ErrorComponents(t *testing.T) {
 		Call(getComponentJot, WithCallErrorModel(errModel), WithComponents())
 
 	require.NoError(t, arrestDoc.Err())
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, expected_ErrorComponents, string(oas))
 }
@@ -162,7 +162,7 @@ func TestCallMethod_WithErrorComponentOnly(t *testing.T) {
 		Call(listComponentJots, WithErrorComponent())
 
 	require.NoError(t, arrestDoc.Err())
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -196,7 +196,7 @@ func TestCallMethod_ErrorComponentPointerAndBuiltin(t *testing.T) {
 			WithComponents())
 
 	require.NoError(t, arrestDoc.Err())
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -232,7 +232,7 @@ func TestCallMethod_ErrorComponentReplaceAndRef(t *testing.T) {
 			WithErrorComponent())
 
 	require.NoError(t, arrestDoc.Err())
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 

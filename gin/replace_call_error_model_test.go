@@ -122,7 +122,7 @@ func TestReplaceCallErrorModel_SingleErrorModel(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -167,7 +167,7 @@ func TestReplaceCallErrorModel_MultipleErrorModels(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 

@@ -123,7 +123,7 @@ func BuildDocString() string {
 		panic(err)
 	}
 
-	rend, err := doc.OpenAPI.Render()
+	rend, err := doc.Render()
 	if err != nil {
 		panic(err)
 	}

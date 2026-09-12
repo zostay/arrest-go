@@ -449,7 +449,7 @@ func TestOpenAPISpecGeneration(t *testing.T) {
 	require.NoError(t, doc.Err())
 
 	// Generate OpenAPI spec
-	openAPISpec, err := doc.OpenAPI.Render()
+	openAPISpec, err := doc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPISpec)
