@@ -103,7 +103,7 @@ func main() {
 		panic(doc.Err())
 	}
 
-	bs, err := doc.OpenAPI.Render()
+	bs, err := doc.Render()
 	if err != nil {
 		panic(err)
 	}

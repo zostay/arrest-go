@@ -17,7 +17,7 @@ func TestBuildDoc(t *testing.T) {
 	doc, err := BuildDoc(e)
 	require.NoError(t, err)
 
-	got, err := doc.OpenAPI.Render()
+	got, err := doc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, expected, string(got))
 }

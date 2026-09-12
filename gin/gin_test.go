@@ -85,7 +85,7 @@ func TestCallMethod_ValidController(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec was generated correctly
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -111,7 +111,7 @@ func TestCallMethod_GetRequest(t *testing.T) {
 
 	assert.NoError(t, arrestDoc.Err())
 
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -475,7 +475,7 @@ func TestParameterGeneration(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes parameters
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -506,7 +506,7 @@ func TestCallMethod_WithRequestComponent(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes request component
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -531,7 +531,7 @@ func TestCallMethod_WithResponseComponent(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes response component
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -556,7 +556,7 @@ func TestCallMethod_WithComponents(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes both components
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -583,7 +583,7 @@ func TestCallMethod_WithoutComponents(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec does not include components (inline schemas)
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -700,7 +700,7 @@ func TestCallMethod_PolymorphicRequest(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec was generated correctly
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -732,7 +732,7 @@ func TestCallMethod_PolymorphicResponse(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec was generated correctly
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -764,7 +764,7 @@ func TestCallMethod_PolymorphicWithComponents(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes polymorphic components
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -897,7 +897,7 @@ func TestCallMethod_PolymorphicError(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes polymorphic error response
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)
@@ -929,7 +929,7 @@ func TestCallMethod_PolymorphicErrorWithDiscriminator(t *testing.T) {
 	assert.NoError(t, arrestDoc.Err())
 
 	// Verify OpenAPI spec includes discriminated error response
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)

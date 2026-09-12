@@ -127,7 +127,7 @@ func TestGoDoc_FieldDescriptions(t *testing.T) {
 		})
 
 	require.NoError(t, doc.Err())
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, expected_FieldDocs, string(oas))
 }

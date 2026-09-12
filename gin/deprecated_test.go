@@ -30,7 +30,7 @@ func TestGinOperation_Deprecated(t *testing.T) {
 
 	assert.NoError(t, arrestDoc.Err())
 
-	openAPI, err := arrestDoc.OpenAPI.Render()
+	openAPI, err := arrestDoc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)

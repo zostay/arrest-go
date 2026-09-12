@@ -475,7 +475,7 @@ func main() {
 	}
 
 	// Generate and save OpenAPI spec
-	openAPISpec, err := doc.OpenAPI.Render()
+	openAPISpec, err := doc.Render()
 	if err != nil {
 		log.Fatalf("Failed to render OpenAPI spec: %v", err)
 	}

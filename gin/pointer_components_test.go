@@ -49,7 +49,7 @@ func TestCallWithPointerTypesAndComponents(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -95,7 +95,7 @@ func TestCallWithPointerTypesIndividualComponentOptions(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -134,7 +134,7 @@ func TestCallWithNonPointerTypesAndComponents(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 

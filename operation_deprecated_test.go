@@ -26,7 +26,7 @@ func TestOperation_Deprecated(t *testing.T) {
 
 	assert.NoError(t, doc.Err())
 
-	openAPI, err := doc.OpenAPI.Render()
+	openAPI, err := doc.Render()
 	require.NoError(t, err)
 
 	spec := string(openAPI)

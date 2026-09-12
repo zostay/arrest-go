@@ -161,7 +161,7 @@ func BuildDocString() string {
 		panic(err)
 	}
 
-	rend, err := doc.OpenAPI.Render()
+	rend, err := doc.Render()
 	if err != nil {
 		panic(err)
 	}
@@ -185,7 +185,7 @@ func main() {
 
 	// Add a route to serve the OpenAPI spec
 	router.GET("/openapi.yaml", func(c *gin.Context) {
-		openAPI, err := doc.OpenAPI.Render()
+		openAPI, err := doc.Render()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

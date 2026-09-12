@@ -112,7 +112,7 @@ func TestModelFrom_Required(t *testing.T) {
 	})
 
 	require.NoError(t, doc.Err())
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, expected_Required, string(oas))
 }
@@ -201,7 +201,7 @@ func TestModelFrom_RequiredPolymorphic(t *testing.T) {
 	})
 
 	require.NoError(t, doc.Err())
-	oas, err := doc.OpenAPI.Render()
+	oas, err := doc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, expected_RequiredPolymorphic, string(oas))
 }

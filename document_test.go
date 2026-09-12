@@ -427,7 +427,7 @@ func TestDocument(t *testing.T) {
 	err = OpenAPI(doc)
 	assert.NoError(t, err)
 
-	rend, err := doc.OpenAPI.Render()
+	rend, err := doc.Render()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rend)
 	assert.YAMLEq(t, expect, string(rend))
@@ -447,7 +447,7 @@ func TestDocumentSkipDocumentation(t *testing.T) {
 	err = OpenAPI(doc)
 	assert.NoError(t, err)
 
-	rend, err := doc.OpenAPI.Render()
+	rend, err := doc.Render()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rend)
 	assert.YAMLEq(t, expect, string(rend))

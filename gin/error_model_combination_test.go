@@ -42,7 +42,7 @@ func TestWithCallErrorModel_CombinesWithDefaultErrorResponse(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -96,7 +96,7 @@ func TestWithCallErrorModel_MultipleCustomErrors(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 
@@ -130,7 +130,7 @@ func TestNoCustomErrorModel_UsesDefaultOnly(t *testing.T) {
 	require.NoError(t, arrestDoc.Err())
 
 	// Render the OpenAPI spec
-	oas, err := arrestDoc.OpenAPI.Render()
+	oas, err := arrestDoc.Render()
 	require.NoError(t, err)
 	spec := string(oas)
 

@@ -193,7 +193,7 @@ func Build() ([]byte, error) {
 	if err := doc.Refresh(); err != nil {
 		return nil, err
 	}
-	return doc.OpenAPI.Render()
+	return doc.Render()
 }
 `
 
@@ -244,7 +244,7 @@ func Build() (*gin.Engine, []byte, error) {
 	if err := doc.Err(); err != nil {
 		return nil, nil, err
 	}
-	bs, err := doc.OpenAPI.Render()
+	bs, err := doc.Render()
 	return router, bs, err
 }
 `

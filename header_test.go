@@ -41,7 +41,7 @@ func TestHeader(t *testing.T) {
 
 	require.NoError(t, doc.Err())
 
-	out, err := doc.OpenAPI.Render()
+	out, err := doc.Render()
 	require.NoError(t, err)
 	assert.YAMLEq(t, headerTestExpectedDoc, string(out))
 }
