@@ -387,8 +387,10 @@ paths:
 		// Add tags to existing operations
 		op.Tags("users", "api")
 
-		// Set operation ID if not present
-		if op.Operation.OperationId == "" {
+		// Set operation ID if not present. Reaching the libopenapi operation
+		// underneath costs the calling package compile time; see "Reaching
+		// the libopenapi model" below.
+		if arrest.OpenAPIOperation(op).OperationId == "" {
 			op.OperationID("getUsers")
 		}
 	}
@@ -500,6 +502,26 @@ This approach is particularly useful for:
 - **Specification merging**: Combining multiple API documents
 
 # 🎯 Features
+
+## 🔍 Reaching the libopenapi model
+
+The DSL types are opaque: a `*arrest.Document`, `*arrest.Operation`, `*arrest.Model` and so on carry their libopenapi object behind an untyped field, and everything you can reach through the DSL types is free of libopenapi types. That is deliberate. The Go compiler re-emits every generic method reachable from any type a package names into that package ([golang/go#70511](https://github.com/golang/go/issues/70511)), and libopenapi's model reaches about nine thousand of them — so a package that merely named a struct holding a `*v3.Document` would pay around two seconds of compile time, and so would every package holding a pointer to it.
+
+When the DSL does not cover something, the `OpenAPI*` functions hand you the object underneath:
+
+```go
+import (
+	"github.com/zostay/arrest-go"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+)
+
+model := arrest.OpenAPIDocument(doc)                // *v3.Document
+op    := arrest.OpenAPIOperation(operation)         // *v3.Operation
+sp    := arrest.OpenAPISchema(petModel)             // *base.SchemaProxy
+m     := arrest.ModelFromOpenAPISchema("pkg.Name", sp) // back to a Model
+```
+
+`OpenAPIResponse`, `OpenAPIParameter`, `OpenAPIHeader`, `OpenAPISecurityScheme`, `OpenAPIFlows`, `OpenAPIChildRefs`, `OpenAPIComponentRefs` and `DocumentIndex` do the same for the rest. The package that calls them pays the cascade; keep such code in a package of its own so the rest of your program does not. `scripts/compile-cost` in this repository measures the effect, and `TestOpaque` keeps the DSL types clean.
 
 ## Core Capabilities
 

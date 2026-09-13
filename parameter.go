@@ -14,8 +14,9 @@ import (
 var ErrUnsupportedParameterType = errors.New("unsupported parameter type")
 
 // Parameter provides DSL methods for creating individual OpenAPI parameters.
+// The libopenapi parameter underneath is available through OpenAPIParameter.
 type Parameter struct {
-	Parameter *v3.Parameter
+	state any // *v3.Parameter; see state.go
 
 	ErrHelper
 }
@@ -28,15 +29,16 @@ type Parameters struct {
 }
 
 // ParameterFromReflect creates a new Parameter from a reflect.Type.
+//
+//go:noinline
 func ParameterFromReflect(t reflect.Type) *Parameter {
-	p := &Parameter{
-		Parameter: &v3.Parameter{},
-	}
+	param := &v3.Parameter{}
+	p := newParameter(param)
 
 	m := ModelFromReflectOnly(t)
 
 	p.AddHandler(m)
-	p.Parameter.Schema = m.SchemaProxy
+	param.Schema = schemaOf(m)
 	return p
 }
 
@@ -85,6 +87,7 @@ func parametersFromFunc(t reflect.Type) *Parameters {
 	return ps
 }
 
+//go:noinline
 func parametersFromStruct(t reflect.Type) *Parameters {
 	_, fieldDocs, _ := GoDocForStruct(t)
 
@@ -120,14 +123,12 @@ func parametersFromStruct(t reflect.Type) *Parameters {
 		var p *Parameter
 		if fReplaceType != "" {
 			// Create parameter with custom type override
-			p = &Parameter{
-				Parameter: &v3.Parameter{},
-			}
-
-			// Create schema with the replacement type
-			p.Parameter.Schema = base.CreateSchemaProxy(&base.Schema{
-				Description: fDescription,
-				Type:        []string{fReplaceType},
+			p = newParameter(&v3.Parameter{
+				// Create schema with the replacement type
+				Schema: base.CreateSchemaProxy(&base.Schema{
+					Description: fDescription,
+					Type:        []string{fReplaceType},
+				}),
 			})
 		} else {
 			// Use default reflection-based parameter creation
@@ -156,13 +157,15 @@ func ParametersFrom[T any]() *Parameters {
 }
 
 // NParameters creates a new Parameters with the given number of parameters.
+//
+//go:noinline
 func NParameters(n int) *Parameters {
 	ps := &Parameters{
 		Parameters: make([]*Parameter, n),
 	}
 
 	for i := range ps.Parameters {
-		ps.Parameters[i] = &Parameter{Parameter: &v3.Parameter{}}
+		ps.Parameters[i] = newParameter(&v3.Parameter{})
 	}
 
 	return ps
@@ -175,8 +178,10 @@ func (p *Parameters) P(idx int, cb func(p *Parameter)) *Parameters {
 }
 
 // Name sets the name of the parameter.
+//
+//go:noinline
 func (p *Parameter) Name(name string) *Parameter {
-	p.Parameter.Name = name
+	paramOf(p).Name = name
 	return p
 }
 
@@ -184,51 +189,74 @@ func (p *Parameter) Name(name string) *Parameter {
 // one of the usual values like "query", "path", "header", or "cookie". In those
 // cases, you should prefer the InQuery(), InPath(), InHeader(), or InCookie()
 // methods instead.
+//
+//go:noinline
 func (p *Parameter) In(in string) *Parameter {
-	p.Parameter.In = in
+	paramOf(p).In = in
 	return p
 }
 
 // InQuery sets the location of the parameter to "query".
+//
+//go:noinline
 func (p *Parameter) InQuery() *Parameter {
-	p.Parameter.In = "query"
+	paramOf(p).In = "query"
 	return p
 }
 
 // InPath sets the location of the parameter to "path".
+//
+//go:noinline
 func (p *Parameter) InPath() *Parameter {
-	p.Parameter.In = "path"
+	paramOf(p).In = "path"
 	return p
 }
 
 // InHeader sets the location of the parameter to "header".
+//
+//go:noinline
 func (p *Parameter) InHeader() *Parameter {
-	p.Parameter.In = "header"
+	paramOf(p).In = "header"
 	return p
 }
 
 // InCookie sets the location of the parameter to "cookie".
+//
+//go:noinline
 func (p *Parameter) InCookie() *Parameter {
-	p.Parameter.In = "cookie"
+	paramOf(p).In = "cookie"
 	return p
 }
 
 // Required marks the parameter as required.
+//
+//go:noinline
 func (p *Parameter) Required() *Parameter {
 	req := true
-	p.Parameter.Required = &req
+	paramOf(p).Required = &req
 	return p
 }
 
 // Description sets the description of the parameter.
+//
+//go:noinline
 func (p *Parameter) Description(description string) *Parameter {
-	p.Parameter.Description = description
+	paramOf(p).Description = description
 	return p
 }
 
+// ParameterName returns the name of the parameter.
+//
+//go:noinline
+func (p *Parameter) ParameterName() string {
+	return paramOf(p).Name
+}
+
 // Model sets the schema of the parameter.
+//
+//go:noinline
 func (p *Parameter) Model(m *Model) *Parameter {
 	p.AddHandler(m)
-	p.Parameter.Schema = m.SchemaProxy
+	paramOf(p).Schema = schemaOf(m)
 	return p
 }

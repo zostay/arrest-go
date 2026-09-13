@@ -1,3 +1,27 @@
+## Unreleased
+
+ * **Breaking:** the DSL types are now opaque to libopenapi, so that naming
+   one costs an importing package nothing. Go re-emits every generic method
+   reachable from a type a package names into that package (golang/go#70511);
+   a package naming `*arrest.Document` emitted 8,781 functions and took ~1.7s
+   to compile, and every package holding a pointer to one paid the same. It
+   now emits 33 and takes ~0.1s. The exported escape-hatch fields —
+   `Document.DataModel`, `Model.SchemaProxy`, `Operation.Operation`,
+   `Response.Response`, `Parameter.Parameter`, `Header.Header`,
+   `SecurityScheme.SecurityScheme` — and the methods `Model.ExtractChildRefs`
+   and `Model.ExtractComponentRefs` are replaced by functions in `raw.go`:
+   `OpenAPIDocument`, `DocumentIndex`, `OpenAPISchema`,
+   `ModelFromOpenAPISchema`, `OpenAPIOperation`, `OpenAPIResponse`,
+   `OpenAPIParameter`, `OpenAPIHeader`, `OpenAPISecurityScheme`,
+   `OpenAPIFlows`, `OpenAPIChildRefs` and `OpenAPIComponentRefs`. Only the
+   package that calls one pays the cascade. `RegardingFlow.AddExtension`
+   takes `any` (a `*yaml.Node` still works; anything else is encoded as
+   YAML). Added `Operation.HasResponses`, `Model.IsReference` and
+   `Parameter.ParameterName`. `TestOpaque` in both packages enforces the
+   rule. Measured on a consumer: cold build 20.4s → 13.8s, cold test compile
+   20.7s → 16.0s, and the rebuild after editing its API package 2.6s → 1.1s.
+   (#101)
+
 ## 0.2.0  2026-09-12
 
 This release is about what it costs a consumer to compile against arrest-go

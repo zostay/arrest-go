@@ -89,11 +89,7 @@ func (o *Operation) configureOperationSchemas(inputType, outputType reflect.Type
 
 	// Configure success response with output model
 	// Only add if no responses have been configured yet
-	hasAnyResponse := o.Operation.Operation.Responses != nil &&
-		o.Operation.Operation.Responses.Codes != nil &&
-		o.Operation.Operation.Responses.Codes.Len() > 0
-
-	if !hasAnyResponse {
+	if !o.HasResponses() {
 		o.Response("200", func(r *arrest.Response) {
 			// Get description from output model's godoc
 			description := "Success"
@@ -183,7 +179,7 @@ func (o *Operation) componentModel(t reflect.Type) *arrest.Model {
 // as-is. The default ErrorResponse is registered simply as "ErrorResponse"
 // unless the document maps this package to an OpenAPI package name.
 func (o *Operation) errorComponentRef(m *arrest.Model) (*arrest.Model, error) {
-	if m.SchemaProxy != nil && m.SchemaProxy.IsReference() {
+	if m.IsReference() {
 		return m, nil
 	}
 
@@ -235,7 +231,7 @@ func (o *Operation) postProcessParameters(parameters *arrest.Parameters, inputTy
 	// Filter parameters to only include those with explicit in= tags
 	filteredParams := make([]*arrest.Parameter, 0)
 	for _, param := range parameters.Parameters {
-		if info, exists := fieldInfo[param.Parameter.Name]; exists && info.HasIn() {
+		if info, exists := fieldInfo[param.ParameterName()]; exists && info.HasIn() {
 			// Update parameter properties
 			openAPITag := info.Props()
 			if _, hasRequired := openAPITag["required"]; hasRequired {

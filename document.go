@@ -10,7 +10,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
@@ -19,20 +18,11 @@ type PackageMap struct {
 	GoName      string
 }
 
-// DocumentModel is the built v3 model of a document together with the index
-// built alongside it: the same shape as libopenapi.DocumentModel[v3.Document],
-// defined here so that this package does not import the libopenapi root
-// package, which would bring the Swagger 2, Arazzo, overlay and what-changed
-// packages into every consumer's build.
-type DocumentModel struct {
-	Model v3.Document
-	Index *index.SpecIndex
-}
-
-// Document providees DSL methods for creating OpenAPI documents.
+// Document provides DSL methods for creating OpenAPI documents. The
+// libopenapi document underneath is available through OpenAPIDocument and
+// its index through DocumentIndex.
 type Document struct {
-	// DataModel is the v3 DataModel from the document.
-	DataModel *DocumentModel
+	state any // *documentState; see state.go
 
 	// PackageMap maps OpenAPI "package names" to Go package names. This is
 	// used in SchemaComponentRef.
@@ -42,25 +32,32 @@ type Document struct {
 }
 
 // NewDocumentFromBytes creates a new Document from raw YAML or JSON bytes.
+//
+//go:noinline
 func NewDocumentFromBytes(bs []byte) (*Document, error) {
-	dm, err := buildModel(bs)
+	state, err := buildModel(bs)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Document{DataModel: dm}, nil
+	return &Document{state: state}, nil
 }
 
 // NewDocumentFrom creates a new Document from a v3.Document. This allows you
 // to add to an existing document using the DSL. The document is rendered and
 // reloaded, so the DSL works on a freshly indexed copy rather than on doc.
+//
+//go:noinline
 func NewDocumentFrom(doc *v3.Document) (*Document, error) {
 	return NewDocumentFromBytes(doc.RenderWithIndention(2))
 }
 
 // buildModel does what libopenapi.NewDocument followed by BuildV3Model does,
-// without the libopenapi root package.
-func buildModel(bs []byte) (*DocumentModel, error) {
+// without the libopenapi root package, which would bring the Swagger 2,
+// Arazzo, overlay and what-changed packages into every consumer's build.
+//
+//go:noinline
+func buildModel(bs []byte) (*documentState, error) {
 	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(bs, false)
 	if err != nil {
 		return nil, err
@@ -77,21 +74,25 @@ func buildModel(bs []byte) (*DocumentModel, error) {
 	highDoc := v3.NewDocument(lowDoc)
 	highDoc.Rolodex = lowDoc.Index.GetRolodex()
 
-	return &DocumentModel{Model: *highDoc, Index: lowDoc.Index}, nil
+	return &documentState{model: highDoc, index: lowDoc.Index}, nil
 }
 
 // Render renders the document as YAML, with the schema and security scheme
 // components in name order, so that the same handlers always render the same
 // document whatever order they were declared in.
+//
+//go:noinline
 func (d *Document) Render() ([]byte, error) {
 	d.sortComponents()
-	return d.DataModel.Model.RenderWithIndention(2), nil
+	return modelOf(d).RenderWithIndention(2), nil
 }
 
 // sortComponents puts the document's schema and security scheme components
 // in name order.
+//
+//go:noinline
 func (d *Document) sortComponents() {
-	c := d.DataModel.Model.Components
+	c := modelOf(d).Components
 	if c == nil {
 		return
 	}
@@ -100,6 +101,8 @@ func (d *Document) sortComponents() {
 }
 
 // sortedMap returns m with its keys in order, or m itself when it is nil.
+//
+//go:noinline
 func sortedMap[V any](m *orderedmap.Map[string, V]) *orderedmap.Map[string, V] {
 	if m == nil {
 		return nil
@@ -117,6 +120,8 @@ func sortedMap[V any](m *orderedmap.Map[string, V]) *orderedmap.Map[string, V] {
 }
 
 // NewDocument creates a new Document with the given title.
+//
+//go:noinline
 func NewDocument(title string) (*Document, error) {
 	doc := &v3.Document{
 		Version: "3.1.0",
@@ -131,34 +136,45 @@ func NewDocument(title string) (*Document, error) {
 
 // Refresh renders the document and reloads it, so that the model and its
 // index reflect everything the DSL has added.
+//
+//go:noinline
 func (d *Document) Refresh() error {
 	bs, err := d.Render()
 	if err != nil {
 		return err
 	}
 
-	dm, err := buildModel(bs)
+	state, err := buildModel(bs)
 	if err != nil {
 		return err
 	}
 
-	d.DataModel = dm
+	d.state = state
 
 	return nil
 }
 
+// Title sets the document's title.
+//
+//go:noinline
 func (d *Document) Title(title string) *Document {
-	d.DataModel.Model.Info.Title = title
+	modelOf(d).Info.Title = title
 	return d
 }
 
+// Description sets the document's description.
+//
+//go:noinline
 func (d *Document) Description(description string) *Document {
-	d.DataModel.Model.Info.Description = description
+	modelOf(d).Info.Description = description
 	return d
 }
 
+// Version sets the document's version.
+//
+//go:noinline
 func (d *Document) Version(version string) *Document {
-	d.DataModel.Model.Info.Version = version
+	modelOf(d).Info.Version = version
 	return d
 }
 
@@ -177,16 +193,18 @@ func (d *Document) PackageMap(pairs ...string) *Document {
 	return d
 }
 
-func (d *Document) pathItem(pattern string) *v3.PathItem {
-	if d.DataModel.Model.Paths == nil {
-		d.DataModel.Model.Paths = &v3.Paths{}
+//go:noinline
+func pathItemOf(d *Document, pattern string) *v3.PathItem {
+	m := modelOf(d)
+	if m.Paths == nil {
+		m.Paths = &v3.Paths{}
 	}
 
-	if d.DataModel.Model.Paths.PathItems == nil {
-		d.DataModel.Model.Paths.PathItems = orderedmap.New[string, *v3.PathItem]()
+	if m.Paths.PathItems == nil {
+		m.Paths.PathItems = orderedmap.New[string, *v3.PathItem]()
 	}
 
-	pis := d.DataModel.Model.Paths.PathItems
+	pis := m.Paths.PathItems
 	if _, hasPi := pis.Get(pattern); !hasPi {
 		pis.Set(pattern, &v3.PathItem{})
 	}
@@ -196,82 +214,87 @@ func (d *Document) pathItem(pattern string) *v3.PathItem {
 
 // Get creates a new GET operation at the given pattern. The Operation is
 // returned to be manipulated further.
+//
+//go:noinline
 func (d *Document) Get(pattern string) *Operation {
-	pi := d.pathItem(pattern)
+	pi := pathItemOf(d, pattern)
 
 	if pi.Get == nil {
 		pi.Get = &v3.Operation{}
 	}
 
-	v3o := pi.Get
-
-	o := &Operation{Operation: v3o}
+	o := newOperation(pi.Get)
 	d.AddHandler(o)
 	return o
 }
 
 // Post creates a new POST operation at the given pattern. The Operation is
 // returned to be manipulated further.
+//
+//go:noinline
 func (d *Document) Post(pattern string) *Operation {
-	pi := d.pathItem(pattern)
+	pi := pathItemOf(d, pattern)
 
 	if pi.Post == nil {
 		pi.Post = &v3.Operation{}
 	}
 
-	v3o := pi.Post
-
-	o := &Operation{Operation: v3o}
+	o := newOperation(pi.Post)
 	d.AddHandler(o)
 	return o
 }
 
 // Put creates a new PUT operation at the given pattern. The Operation is
 // returned to be manipulated further.
+//
+//go:noinline
 func (d *Document) Put(pattern string) *Operation {
-	pi := d.pathItem(pattern)
+	pi := pathItemOf(d, pattern)
 
 	if pi.Put == nil {
 		pi.Put = &v3.Operation{}
 	}
 
-	v3o := pi.Put
-
-	o := &Operation{Operation: v3o}
+	o := newOperation(pi.Put)
 	d.AddHandler(o)
 	return o
 }
 
 // Delete creates a new DELETE operation at the given pattern. The Operation is
 // returned to be manipulated further.
+//
+//go:noinline
 func (d *Document) Delete(pattern string) *Operation {
-	pi := d.pathItem(pattern)
+	pi := pathItemOf(d, pattern)
 
 	if pi.Delete == nil {
 		pi.Delete = &v3.Operation{}
 	}
 
-	v3o := pi.Delete
-
-	o := &Operation{Operation: v3o}
+	o := newOperation(pi.Delete)
 	d.AddHandler(o)
 	return o
 }
 
 // AddServer adds a new server URL to the document.
+//
+//go:noinline
 func (d *Document) AddServer(url string) *Document {
-	if d.DataModel.Model.Servers == nil {
-		d.DataModel.Model.Servers = []*v3.Server{}
+	m := modelOf(d)
+	if m.Servers == nil {
+		m.Servers = []*v3.Server{}
 	}
 
-	d.DataModel.Model.Servers = append(d.DataModel.Model.Servers, &v3.Server{URL: url})
+	m.Servers = append(m.Servers, &v3.Server{URL: url})
 	return d
 }
 
 // AddSecurityRequirement configures the global security scopes. The key in
 // the map is the security scheme name and the value is the list of scopes.
+//
+//go:noinline
 func (d *Document) AddSecurityRequirement(reqs map[string][]string) *Document {
-	m := d.DataModel.Model
+	m := modelOf(d)
 	if m.Security == nil {
 		m.Security = []*base.SecurityRequirement{}
 	}
@@ -283,6 +306,7 @@ func (d *Document) AddSecurityRequirement(reqs map[string][]string) *Document {
 	return d
 }
 
+//go:noinline
 func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []PackageMap) *base.SchemaProxy {
 	if sp.IsReference() {
 		if strings.HasPrefix(sp.GetReference(), "#/components/schemas/") {
@@ -370,17 +394,15 @@ func remapSchemaRefs(ctx context.Context, sp *base.SchemaProxy, pkgMap []Package
 
 // SecuritySchemeComponent adds a security scheme component to the document. You
 // can then use the fqn to reference this schema in other parts of the document.
+//
+//go:noinline
 func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Document {
-	if d.DataModel.Model.Components == nil {
-		d.DataModel.Model.Components = &v3.Components{}
-	}
-
-	c := d.DataModel.Model.Components
+	c := componentsOf(d)
 	if c.SecuritySchemes == nil {
 		c.SecuritySchemes = orderedmap.New[string, *v3.SecurityScheme]()
 	}
 
-	c.SecuritySchemes.Set(fqn, m.SecurityScheme)
+	c.SecuritySchemes.Set(fqn, schemeOf(m))
 
 	return d
 }
@@ -394,6 +416,8 @@ func (d *Document) SecuritySchemeComponent(fqn string, m *SecurityScheme) *Docum
 // This is the same registration that ModelFrom performs when given the
 // AsComponent option, exposed so that models built elsewhere (composed models,
 // models handed to another package) can be registered after the fact.
+//
+//go:noinline
 func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 	if fqn == "" {
 		fqn = m.MappedName(d.PkgMap)
@@ -403,47 +427,66 @@ func (d *Document) SchemaComponent(fqn string, m *Model) *Document {
 		return d
 	}
 
-	if d.DataModel.Model.Components == nil {
-		d.DataModel.Model.Components = &v3.Components{}
-	}
-	c := d.DataModel.Model.Components
-	if c.Schemas == nil {
-		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
-	}
-	c.Schemas.Set(sanitizeComponentName(fqn), m.SchemaProxy)
+	c := schemasOf(d)
+	c.Set(sanitizeComponentName(fqn), schemaOf(m))
 
 	// Register child references only when parent is a component. The model's
 	// own type is among its refs; it was registered under fqn above, so skip
 	// it rather than registering it a second time under its mapped name.
-	for goPkg, sp := range sortedRefs(m.ExtractChildRefs()) {
+	for goPkg, sp := range sortedRefs(stateOf(m).makeRefs) {
 		if goPkg == m.Name {
 			continue
 		}
 		childFqn := MappedName(goPkg, d.PkgMap)
-		c.Schemas.Set(childFqn, sp)
+		c.Set(childFqn, sp)
 	}
 
 	return d
 }
 
+// componentsOf returns the document's components, creating them if need be.
+// It is a function rather than a method because even an unexported method's
+// signature is read by whoever names *Document (see state.go).
+//
+//go:noinline
+func componentsOf(d *Document) *v3.Components {
+	m := modelOf(d)
+	if m.Components == nil {
+		m.Components = &v3.Components{}
+	}
+	return m.Components
+}
+
+// schemasOf returns the document's schema components, creating the map if
+// need be.
+//
+//go:noinline
+func schemasOf(d *Document) *orderedmap.Map[string, *base.SchemaProxy] {
+	c := componentsOf(d)
+	if c.Schemas == nil {
+		c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
+	}
+	return c.Schemas
+}
+
 // SchemaComponents lists all the schema components in the document.
+//
+//go:noinline
 func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
-	if d.DataModel.Model.Components == nil {
+	m := modelOf(d)
+	if m.Components == nil {
 		return nil
 	}
 
-	if d.DataModel.Model.Components.Schemas == nil {
+	if m.Components.Schemas == nil {
 		return nil
 	}
 
-	scs := make([]*SchemaComponent, 0, d.DataModel.Model.Components.Schemas.Len())
-	for pair := range orderedmap.Iterate(ctx, d.DataModel.Model.Components.Schemas) {
+	scs := make([]*SchemaComponent, 0, m.Components.Schemas.Len())
+	for pair := range orderedmap.Iterate(ctx, m.Components.Schemas) {
 		name, sp := pair.Key(), pair.Value()
 
-		schema := &Model{
-			Name:        name,
-			SchemaProxy: sp,
-		}
+		schema := newModel(name, sp, nil, nil)
 		ref := SchemaRef(name)
 
 		scs = append(scs, NewSchemaComponent(name, schema, ref))
@@ -453,42 +496,45 @@ func (d *Document) SchemaComponents(ctx context.Context) []*SchemaComponent {
 }
 
 // Operations lists all the operations in the document.
+//
+//go:noinline
 func (d *Document) Operations(ctx context.Context) []*Operation {
-	if d.DataModel.Model.Paths == nil {
+	m := modelOf(d)
+	if m.Paths == nil {
 		return nil
 	}
 
-	if d.DataModel.Model.Paths.PathItems == nil {
+	if m.Paths.PathItems == nil {
 		return nil
 	}
 
-	os := make([]*Operation, 0, d.DataModel.Model.Paths.PathItems.Len())
-	for pair := range orderedmap.Iterate(ctx, d.DataModel.Model.Paths.PathItems) {
+	os := make([]*Operation, 0, m.Paths.PathItems.Len())
+	for pair := range orderedmap.Iterate(ctx, m.Paths.PathItems) {
 		pi := pair.Value()
 
 		if pi.Get != nil {
-			os = append(os, &Operation{Operation: pi.Get})
+			os = append(os, newOperation(pi.Get))
 		}
 		if pi.Post != nil {
-			os = append(os, &Operation{Operation: pi.Post})
+			os = append(os, newOperation(pi.Post))
 		}
 		if pi.Delete != nil {
-			os = append(os, &Operation{Operation: pi.Delete})
+			os = append(os, newOperation(pi.Delete))
 		}
 		if pi.Put != nil {
-			os = append(os, &Operation{Operation: pi.Put})
+			os = append(os, newOperation(pi.Put))
 		}
 		if pi.Patch != nil {
-			os = append(os, &Operation{Operation: pi.Patch})
+			os = append(os, newOperation(pi.Patch))
 		}
 		if pi.Options != nil {
-			os = append(os, &Operation{Operation: pi.Options})
+			os = append(os, newOperation(pi.Options))
 		}
 		if pi.Head != nil {
-			os = append(os, &Operation{Operation: pi.Head})
+			os = append(os, newOperation(pi.Head))
 		}
 		if pi.Trace != nil {
-			os = append(os, &Operation{Operation: pi.Trace})
+			os = append(os, newOperation(pi.Trace))
 		}
 	}
 
