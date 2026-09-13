@@ -40,7 +40,7 @@ type Probe struct {
 }
 
 // Packages the probe module imports, and how each is spelled in a probe.
-var packages = []struct {
+var probedPackages = []struct {
 	alias, path, dir string
 }{
 	{"arrest", "github.com/zostay/arrest-go", "."},
@@ -53,7 +53,7 @@ var packages = []struct {
 // anyone remembering to list it.
 func Probes(root string) ([]Probe, error) {
 	var probes []Probe
-	for _, pkg := range packages {
+	for _, pkg := range probedPackages {
 		names, err := exportedTypes(filepath.Join(root, pkg.dir))
 		if err != nil {
 			return nil, err

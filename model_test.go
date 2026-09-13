@@ -369,11 +369,11 @@ func TestModelFrom_DeepRecursiveStruct(t *testing.T) {
 	model := arrest.ModelFrom[DeepRecursiveStruct](doc)
 	assert.NoError(t, model.Err())
 
-	require.NotNil(t, model.SchemaProxy)
-	require.NotNil(t, model.SchemaProxy.Schema())
+	require.NotNil(t, arrest.OpenAPISchema(model))
+	require.NotNil(t, arrest.OpenAPISchema(model).Schema())
 
 	// Should handle multiple levels of recursion
-	refs := model.ExtractChildRefs()
+	refs := arrest.OpenAPIChildRefs(model)
 	assert.NotEmpty(t, refs, "Should have child references for deeply recursive types")
 }
 

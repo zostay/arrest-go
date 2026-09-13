@@ -469,23 +469,23 @@ func TestParametersFromStructWithTypeOverrides(t *testing.T) {
 
 	// Check ID parameter - should be path parameter with string type (inferred)
 	idParam := params.Parameters[0]
-	assert.Equal(t, "id", idParam.Parameter.Name)
-	assert.Equal(t, "path", idParam.Parameter.In)
-	assert.NotNil(t, idParam.Parameter.Required)
-	assert.True(t, *idParam.Parameter.Required)
-	assert.Equal(t, []string{"string"}, idParam.Parameter.Schema.Schema().Type)
+	assert.Equal(t, "id", arrest.OpenAPIParameter(idParam).Name)
+	assert.Equal(t, "path", arrest.OpenAPIParameter(idParam).In)
+	assert.NotNil(t, arrest.OpenAPIParameter(idParam).Required)
+	assert.True(t, *arrest.OpenAPIParameter(idParam).Required)
+	assert.Equal(t, []string{"string"}, arrest.OpenAPIParameter(idParam).Schema.Schema().Type)
 
 	// Check UserType parameter - should be query parameter with string type (overridden from int)
 	userTypeParam := params.Parameters[1]
-	assert.Equal(t, "userType", userTypeParam.Parameter.Name)
-	assert.Equal(t, "query", userTypeParam.Parameter.In)
-	assert.Nil(t, userTypeParam.Parameter.Required) // Query params are not required by default
-	assert.Equal(t, []string{"string"}, userTypeParam.Parameter.Schema.Schema().Type)
+	assert.Equal(t, "userType", arrest.OpenAPIParameter(userTypeParam).Name)
+	assert.Equal(t, "query", arrest.OpenAPIParameter(userTypeParam).In)
+	assert.Nil(t, arrest.OpenAPIParameter(userTypeParam).Required) // Query params are not required by default
+	assert.Equal(t, []string{"string"}, arrest.OpenAPIParameter(userTypeParam).Schema.Schema().Type)
 
 	// Check Count parameter - should be query parameter with integer type (overridden from uint64)
 	countParam := params.Parameters[2]
-	assert.Equal(t, "count", countParam.Parameter.Name)
-	assert.Equal(t, "query", countParam.Parameter.In)
-	assert.Nil(t, countParam.Parameter.Required) // Query params are not required by default
-	assert.Equal(t, []string{"integer"}, countParam.Parameter.Schema.Schema().Type)
+	assert.Equal(t, "count", arrest.OpenAPIParameter(countParam).Name)
+	assert.Equal(t, "query", arrest.OpenAPIParameter(countParam).In)
+	assert.Nil(t, arrest.OpenAPIParameter(countParam).Required) // Query params are not required by default
+	assert.Equal(t, []string{"integer"}, arrest.OpenAPIParameter(countParam).Schema.Schema().Type)
 }

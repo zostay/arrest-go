@@ -11,13 +11,14 @@ import (
 
 // MaxFuncs is the most functions any guarded probe may emit. It is a
 // ratchet: it sits just above the worst probe today so that a change which
-// widens the cascade fails here, and it comes down as the cascade is cut.
+// widens the cascade fails here.
 //
-// While the public DSL types reach libopenapi's model, every probe that
-// names one pays for the whole cascade (~9,000-11,000 functions). Once they
-// are opaque, a probe should emit a handful, and this should be lowered to
-// something like 100.
-const MaxFuncs = 12000
+// A probe that names an opaque DSL type emits a few dozen functions (the
+// generic set behind ErrHelper, and gin's own); one that reached libopenapi's
+// model would emit around 9,000. Anything in between means a type or an
+// inlinable body has started to reach the model — TestOpaque in the DSL
+// packages says where.
+const MaxFuncs = 100
 
 // TestGuard builds a probe package for every public type and fails if any of
 // them emits more functions than MaxFuncs. It builds real packages, so it is

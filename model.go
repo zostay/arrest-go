@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
@@ -58,6 +57,7 @@ type PolymorphicInfo struct {
 	Fields             []PolymorphicField
 }
 
+//go:noinline
 func newRefMapper(prefix string) *refMapper {
 	return &refMapper{
 		makeRefs:      make(map[string]*base.SchemaProxy),
@@ -132,6 +132,8 @@ func detectPolymorphicStruct(t reflect.Type) (*PolymorphicInfo, bool) {
 }
 
 // buildPolymorphicSchema creates a polymorphic schema based on PolymorphicInfo
+//
+//go:noinline
 func buildPolymorphicSchema(info *PolymorphicInfo, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	// Create schemas for each polymorphic field
 	var schemas []*base.SchemaProxy
@@ -255,6 +257,7 @@ func makeName(refName string, t reflect.Type, defaultSuffix string) string {
 	}
 }
 
+//go:noinline
 func (m *refMapper) makeComponentRef(refName string, t reflect.Type, sp *base.SchemaProxy) string {
 	name := makeName(refName, t, "")
 	m.makeRefs[name] = sp
@@ -263,22 +266,26 @@ func (m *refMapper) makeComponentRef(refName string, t reflect.Type, sp *base.Sc
 }
 
 // Model provides DSL methods for creating OpenAPI schema objects based on Go
-// types.
+// types. The libopenapi schema underneath is available through OpenAPISchema.
 type Model struct {
-	Name        string
-	SchemaProxy *base.SchemaProxy
+	// Name is the fully qualified Go type name the model stands for, or a
+	// bare label like "OneOf" for a composed model, or "" for an anonymous
+	// schema.
+	Name string
 
-	makeRefs      map[string]*base.SchemaProxy
-	componentRefs map[string]*base.SchemaProxy
+	state any // *modelState; see state.go
 
 	ErrHelper
 }
 
 // AnyOf associates a list of enumerations with the model.
+//
+//go:noinline
 func (m *Model) AnyOf(enums ...Enumeration) *Model {
-	m.SchemaProxy.Schema().AnyOf = make([]*base.SchemaProxy, len(enums))
+	schema := schemaOf(m).Schema()
+	schema.AnyOf = make([]*base.SchemaProxy, len(enums))
 	for i, enum := range enums {
-		m.SchemaProxy.Schema().AnyOf[i] = base.CreateSchemaProxy(&base.Schema{
+		schema.AnyOf[i] = base.CreateSchemaProxy(&base.Schema{
 			Title: enum.Title,
 			Const: &yaml.Node{
 				Kind:  yaml.ScalarNode,
@@ -291,10 +298,13 @@ func (m *Model) AnyOf(enums ...Enumeration) *Model {
 }
 
 // OneOf associates a list of enumerations with the model.
+//
+//go:noinline
 func (m *Model) OneOf(enums ...Enumeration) *Model {
-	m.SchemaProxy.Schema().OneOf = make([]*base.SchemaProxy, len(enums))
+	schema := schemaOf(m).Schema()
+	schema.OneOf = make([]*base.SchemaProxy, len(enums))
 	for i, enum := range enums {
-		m.SchemaProxy.Schema().OneOf[i] = base.CreateSchemaProxy(&base.Schema{
+		schema.OneOf[i] = base.CreateSchemaProxy(&base.Schema{
 			Title: enum.Title,
 			Const: &yaml.Node{
 				Kind:  yaml.ScalarNode,
@@ -331,15 +341,29 @@ func (m *Model) MappedName(pkgMap []PackageMap) string {
 	return MappedName(m.Name, pkgMap)
 }
 
+// Description sets the schema's description.
+//
+//go:noinline
 func (m *Model) Description(description string) *Model {
-	m.SchemaProxy.Schema().Description = description
+	schemaOf(m).Schema().Description = description
 	return m
+}
+
+// IsReference reports whether the model is a $ref to a component rather than
+// a schema of its own.
+//
+//go:noinline
+func (m *Model) IsReference() bool {
+	sp := schemaOf(m)
+	return sp != nil && sp.IsReference()
 }
 
 // Discriminator configures the discriminator for polymorphic schemas.
 // It takes a property name used to discriminate between schemas, a default mapping,
 // and optional alias-to-value mapping pairs.
 // The mappings parameter should contain pairs of strings: alias1, value1, alias2, value2, etc.
+//
+//go:noinline
 func (m *Model) Discriminator(propertyName, defaultMapping string, mappings ...string) *Model {
 	if len(mappings)%2 != 0 {
 		return withErr(m, errors.New("discriminator mappings must be provided in pairs (alias, value)"))
@@ -360,20 +384,14 @@ func (m *Model) Discriminator(propertyName, defaultMapping string, mappings ...s
 		Mapping:        mapping,
 	}
 
-	m.SchemaProxy.Schema().Discriminator = discriminator
+	schemaOf(m).Schema().Discriminator = discriminator
 	return m
-}
-
-func (m *Model) ExtractChildRefs() map[string]*base.SchemaProxy {
-	return m.makeRefs
-}
-
-func (m *Model) ExtractComponentRefs() map[string]*base.SchemaProxy {
-	return m.componentRefs
 }
 
 // sortedRefs yields refs in name order. Registering components from a Go
 // map's own iteration order would list them differently on every run.
+//
+//go:noinline
 func sortedRefs(refs map[string]*base.SchemaProxy) iter.Seq2[string, *base.SchemaProxy] {
 	return func(yield func(string, *base.SchemaProxy) bool) {
 		for _, name := range slices.Sorted(maps.Keys(refs)) {
@@ -384,6 +402,7 @@ func sortedRefs(refs map[string]*base.SchemaProxy) iter.Seq2[string, *base.Schem
 	}
 }
 
+//go:noinline
 func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	// Check if this is a polymorphic struct first
 	if polymorphInfo, isPolymorphic := detectPolymorphicStruct(t); isPolymorphic {
@@ -526,6 +545,7 @@ func makeSchemaProxyStruct(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*
 	return base.CreateSchemaProxy(schema), nil
 }
 
+//go:noinline
 func makeSchemaProxySlice(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	sp, err := makeSchemaProxy(t.Elem(), makeRefs, skipDoc)
 	if err != nil {
@@ -547,6 +567,7 @@ func makeSchemaProxySlice(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*b
 	return schema, nil
 }
 
+//go:noinline
 func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	if t.Key().Kind() != reflect.String {
 		// technically illegal, so we'll just return it as type unspecified
@@ -583,6 +604,7 @@ func makeSchemaProxyMap(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*bas
 	return schema, nil
 }
 
+//go:noinline
 func makeSchemaProxy(t reflect.Type, makeRefs *refMapper, skipDoc bool) (*base.SchemaProxy, error) {
 	// Check if this type is currently being processed to prevent infinite recursion
 	if makeRefs.inProcess[t] {
@@ -703,14 +725,16 @@ func WithComponentName(name string) ModelOption {
 }
 
 // ModelFromReflect creates a new Model from a reflect.Type with document context.
+//
+//go:noinline
 func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
 	name := typeName(t)
-	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
-	if m.SchemaProxy == nil {
+	m := withErr(newModel(name, sp, mr.makeRefs, mr.componentRefs), err)
+	if sp == nil {
 		panic(fmt.Sprintf("failed to create SchemaProxy for type %s: got nil", name))
-	} else if m.SchemaProxy.Schema() == nil {
+	} else if sp.Schema() == nil {
 		panic(fmt.Sprintf("SchemaProxy for type %s returned nil Schema", name))
 	}
 
@@ -718,13 +742,13 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	doc.AddHandler(m)
 
 	// Apply package mapping to schema references
-	if slices.Contains(m.SchemaProxy.Schema().Type, "object") ||
-		m.SchemaProxy.Schema().OneOf != nil ||
-		m.SchemaProxy.Schema().AnyOf != nil ||
-		m.SchemaProxy.Schema().AllOf != nil {
-		remapSchemaRefs(context.TODO(), m.SchemaProxy, doc.PkgMap)
+	if slices.Contains(sp.Schema().Type, "object") ||
+		sp.Schema().OneOf != nil ||
+		sp.Schema().AnyOf != nil ||
+		sp.Schema().AllOf != nil {
+		remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
 	}
-	for pkgName, sp := range m.ExtractChildRefs() {
+	for pkgName, sp := range mr.makeRefs {
 		if (sp == nil) || (sp.Schema() == nil) {
 			doc.AddError(fmt.Errorf("failed while remapping schema refs for model %s, the package for %s has not be given a schema proxy definition; this may happen when refName and elemRefName are not consistent set", m.Name, pkgName))
 			continue
@@ -739,15 +763,9 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 	}
 
 	// Register component references (from refName tags) automatically
-	if len(m.ExtractComponentRefs()) > 0 {
-		if doc.DataModel.Model.Components == nil {
-			doc.DataModel.Model.Components = &v3.Components{}
-		}
-		c := doc.DataModel.Model.Components
-		if c.Schemas == nil {
-			c.Schemas = orderedmap.New[string, *base.SchemaProxy]()
-		}
-		for goPkg, sp := range sortedRefs(m.ExtractComponentRefs()) {
+	if len(mr.componentRefs) > 0 {
+		c := schemasOf(doc)
+		for goPkg, sp := range sortedRefs(mr.componentRefs) {
 			if (sp == nil) || (sp.Schema() == nil) {
 				doc.AddError(fmt.Errorf("failed while registering component reference for model %s, the package %s has not be given a schema proxy object; this may happen when refName and elemRefName are not consistently set", m.Name, goPkg))
 				continue
@@ -761,7 +779,7 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 				sp.Schema().AllOf != nil {
 				remapSchemaRefs(context.TODO(), sp, doc.PkgMap)
 			}
-			c.Schemas.Set(componentFqn, sp)
+			c.Set(componentFqn, sp)
 		}
 	}
 
@@ -780,10 +798,10 @@ func ModelFromReflect(t reflect.Type, doc *Document, opts ...ModelOption) *Model
 			// An unnamed slice has nothing to register under, but its element
 			// does: register the element and make this an array of references.
 			elemModel := ModelFromReflect(elemType(t), doc, AsComponent())
-			m.SchemaProxy = base.CreateSchemaProxy(&base.Schema{
+			stateOf(m).schema = base.CreateSchemaProxy(&base.Schema{
 				Type: []string{"array"},
 				Items: &base.DynamicValue[*base.SchemaProxy, bool]{
-					A: SchemaRef(elemModel.MappedName(doc.PkgMap)).SchemaProxy,
+					A: schemaOf(SchemaRef(elemModel.MappedName(doc.PkgMap))),
 				},
 			})
 		}
@@ -842,15 +860,17 @@ func ModelFrom[T any](doc *Document, opts ...ModelOption) *Model {
 
 // ModelFromReflectOnly creates a new Model from a reflect.Type without document context.
 // This is intended for simple cases like parameters where document registration is not needed.
+//
+//go:noinline
 func ModelFromReflectOnly(t reflect.Type) *Model {
 	mr := newRefMapper(t.PkgPath())
 	sp, err := makeSchemaProxy(t, mr, SkipDocumentation)
 	name := typeName(t)
-	m := withErr(&Model{Name: name, SchemaProxy: sp, makeRefs: mr.makeRefs, componentRefs: mr.componentRefs}, err)
-	if m.SchemaProxy == nil {
-		panic("nope")
-	} else if m.SchemaProxy.Schema() == nil {
-		panic("noper")
+	m := withErr(newModel(name, sp, mr.makeRefs, mr.componentRefs), err)
+	if sp == nil {
+		panic(fmt.Sprintf("failed to create SchemaProxy for type %s: got nil", name))
+	} else if sp.Schema() == nil {
+		panic(fmt.Sprintf("SchemaProxy for type %s returned nil Schema", name))
 	}
 	return m
 }
@@ -862,24 +882,22 @@ func ModelFromOnly[T any]() *Model {
 	return ModelFromReflectOnly(reflect.TypeOf(t))
 }
 
+// SchemaRef creates a model that is a $ref to the schema component fqn.
+//
+//go:noinline
 func SchemaRef(fqn string) *Model {
 	sanitizedName := sanitizeComponentName(fqn)
-	return &Model{
-		Name:        fqn,
-		SchemaProxy: base.CreateSchemaProxyRef("#" + path.Join("/components/schemas", sanitizedName)),
-	}
+	return newModel(fqn, base.CreateSchemaProxyRef("#"+path.Join("/components/schemas", sanitizedName)), nil, nil)
 }
 
 // OneOfTheseModels creates a model that represents a oneOf composition of the provided models.
 // This is used for polymorphic schemas where exactly one of the provided schemas should match.
+//
+//go:noinline
 func OneOfTheseModels(doc *Document, models ...*Model) *Model {
 	if len(models) == 0 {
-		return withErr(&Model{
-			Name:          "OneOf",
-			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
-			makeRefs:      make(map[string]*base.SchemaProxy),
-			componentRefs: make(map[string]*base.SchemaProxy),
-		}, ErrUnsupportedModelType)
+		return withErr(newModel("OneOf", base.CreateSchemaProxy(&base.Schema{}),
+			make(map[string]*base.SchemaProxy), make(map[string]*base.SchemaProxy)), ErrUnsupportedModelType)
 	}
 
 	// Create SchemaProxy slice for OneOf
@@ -894,13 +912,14 @@ func OneOfTheseModels(doc *Document, models ...*Model) *Model {
 			firstErr = model.Err()
 		}
 
-		oneOfSchemas[i] = model.SchemaProxy
+		st := stateOf(model)
+		oneOfSchemas[i] = st.schema
 
 		// Merge refs from all models
-		for k, v := range model.makeRefs {
+		for k, v := range st.makeRefs {
 			allMakeRefs[k] = v
 		}
-		for k, v := range model.componentRefs {
+		for k, v := range st.componentRefs {
 			allComponentRefs[k] = v
 		}
 	}
@@ -910,12 +929,7 @@ func OneOfTheseModels(doc *Document, models ...*Model) *Model {
 		OneOf: oneOfSchemas,
 	}
 
-	m := withErr(&Model{
-		Name:          "OneOf",
-		SchemaProxy:   base.CreateSchemaProxy(schema),
-		makeRefs:      allMakeRefs,
-		componentRefs: allComponentRefs,
-	}, firstErr)
+	m := withErr(newModel("OneOf", base.CreateSchemaProxy(schema), allMakeRefs, allComponentRefs), firstErr)
 
 	// Add to document handlers
 	doc.AddHandler(m)
@@ -925,14 +939,12 @@ func OneOfTheseModels(doc *Document, models ...*Model) *Model {
 
 // AnyOfTheseModels creates a model that represents an anyOf composition of the provided models.
 // This is used for polymorphic schemas where any of the provided schemas can match.
+//
+//go:noinline
 func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
 	if len(models) == 0 {
-		return withErr(&Model{
-			Name:          "AnyOf",
-			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
-			makeRefs:      make(map[string]*base.SchemaProxy),
-			componentRefs: make(map[string]*base.SchemaProxy),
-		}, ErrUnsupportedModelType)
+		return withErr(newModel("AnyOf", base.CreateSchemaProxy(&base.Schema{}),
+			make(map[string]*base.SchemaProxy), make(map[string]*base.SchemaProxy)), ErrUnsupportedModelType)
 	}
 
 	// Create SchemaProxy slice for AnyOf
@@ -947,13 +959,14 @@ func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
 			firstErr = model.Err()
 		}
 
-		anyOfSchemas[i] = model.SchemaProxy
+		st := stateOf(model)
+		anyOfSchemas[i] = st.schema
 
 		// Merge refs from all models
-		for k, v := range model.makeRefs {
+		for k, v := range st.makeRefs {
 			allMakeRefs[k] = v
 		}
-		for k, v := range model.componentRefs {
+		for k, v := range st.componentRefs {
 			allComponentRefs[k] = v
 		}
 	}
@@ -963,12 +976,7 @@ func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
 		AnyOf: anyOfSchemas,
 	}
 
-	m := withErr(&Model{
-		Name:          "AnyOf",
-		SchemaProxy:   base.CreateSchemaProxy(schema),
-		makeRefs:      allMakeRefs,
-		componentRefs: allComponentRefs,
-	}, firstErr)
+	m := withErr(newModel("AnyOf", base.CreateSchemaProxy(schema), allMakeRefs, allComponentRefs), firstErr)
 
 	// Add to document handlers
 	doc.AddHandler(m)
@@ -978,14 +986,12 @@ func AnyOfTheseModels(doc *Document, models ...*Model) *Model {
 
 // AllOfTheseModels creates a model that represents an allOf composition of the provided models.
 // This is used for polymorphic schemas where all of the provided schemas must match.
+//
+//go:noinline
 func AllOfTheseModels(doc *Document, models ...*Model) *Model {
 	if len(models) == 0 {
-		return withErr(&Model{
-			Name:          "AllOf",
-			SchemaProxy:   base.CreateSchemaProxy(&base.Schema{}),
-			makeRefs:      make(map[string]*base.SchemaProxy),
-			componentRefs: make(map[string]*base.SchemaProxy),
-		}, ErrUnsupportedModelType)
+		return withErr(newModel("AllOf", base.CreateSchemaProxy(&base.Schema{}),
+			make(map[string]*base.SchemaProxy), make(map[string]*base.SchemaProxy)), ErrUnsupportedModelType)
 	}
 
 	// Create SchemaProxy slice for AllOf
@@ -1000,13 +1006,14 @@ func AllOfTheseModels(doc *Document, models ...*Model) *Model {
 			firstErr = model.Err()
 		}
 
-		allOfSchemas[i] = model.SchemaProxy
+		st := stateOf(model)
+		allOfSchemas[i] = st.schema
 
 		// Merge refs from all models
-		for k, v := range model.makeRefs {
+		for k, v := range st.makeRefs {
 			allMakeRefs[k] = v
 		}
-		for k, v := range model.componentRefs {
+		for k, v := range st.componentRefs {
 			allComponentRefs[k] = v
 		}
 	}
@@ -1016,12 +1023,7 @@ func AllOfTheseModels(doc *Document, models ...*Model) *Model {
 		AllOf: allOfSchemas,
 	}
 
-	m := withErr(&Model{
-		Name:          "AllOf",
-		SchemaProxy:   base.CreateSchemaProxy(schema),
-		makeRefs:      allMakeRefs,
-		componentRefs: allComponentRefs,
-	}, firstErr)
+	m := withErr(newModel("AllOf", base.CreateSchemaProxy(schema), allMakeRefs, allComponentRefs), firstErr)
 
 	// Add to document handlers
 	doc.AddHandler(m)

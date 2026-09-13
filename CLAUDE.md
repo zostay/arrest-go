@@ -48,7 +48,12 @@ make compile-cost                        # Functions emitted into, and recompile
 scripts/compile-cost -cold               # Plus a cold build of the probe module and its critical path
 scripts/compile-cost -consumer ../app    # Plus cold builds of a real consumer, as released and with this checkout
 ```
-The Go compiler re-emits every generic method reachable from an imported type into the importing package (golang/go#70511), so a consumer that names `*arrest.Document` pays for libopenapi's whole model. `internal/compilecost` measures that and `TestGuard` there fails when a probe exceeds `MaxFuncs`; the epic is issue #99. Any change to a public type's fields or method signatures should be checked with `make compile-cost`.
+The Go compiler re-emits every generic method reachable from an imported type into the importing package (golang/go#70511), so a package that named a struct holding a libopenapi object would pay for libopenapi's whole model (~9,000 functions, ~2s). The DSL types are therefore opaque — see `state.go`:
+- Public structs keep their libopenapi object in an unexported `any` field (`state`); `state.go` has the typed accessors (`modelOf`, `opOf`, `schemaOf`, …) and constructors (`newModel`, `newOperation`, …).
+- No exported type may reach a libopenapi type through a field or **any** method signature, exported or not. Helpers that return libopenapi types are package-level functions (`componentsOf(d)`), never methods.
+- Every function whose signature or body touches a libopenapi type is `//go:noinline`, so importers never read its body. Generic functions (`ModelFrom[T]`) are thin wrappers over non-generic `//go:noinline` functions.
+- `raw.go` holds the escape hatches (`OpenAPIDocument`, `OpenAPISchema`, `OpenAPIOperation`, …) for callers who need the model and accept the cost.
+- `TestOpaque` (root and gin) type-checks the rule with `internal/compilecost.Opaque` and names the offending field, method or expression; `TestGuard` in `internal/compilecost` fails if any probe emits more than `MaxFuncs`. The epic is issue #99.
 
 ### Releasing
 ```bash
@@ -249,7 +254,7 @@ All error scenarios now use the same error handling pipeline:
 
 ### Schema Reference Management
 When working with schema components:
-- Child schemas are automatically extracted via `ExtractChildRefs()`
+- Child schemas are tracked per model and reachable via `arrest.OpenAPIChildRefs(m)`
 - Package mapping is applied during component registration in `SchemaComponent()`
 - The `remapSchemaRefs()` function recursively updates all `$ref` values in schemas
 
